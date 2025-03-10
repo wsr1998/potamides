@@ -10,58 +10,6 @@ import numpy.typing as npt  # type: ignore[import-not-found]
 from astropy import units as u  # type: ignore[import-not-found]
 from gala.units import galactic  # type: ignore[import-not-found]
 
-# def fitting_stream(X, Y, N_new, k=3, s=100):
-#     N = len(X)
-#     gamma = np.linspace(-1, 1, N)
-#     gamma_new = np.linspace(min(gamma), max(gamma), N_new)
-#     cs_x = UnivariateSpline(gamma, X, k=k, s=s)
-#     cs_y = UnivariateSpline(gamma, Y, k=k, s=s)
-
-#     X_new = cs_x(gamma_new)
-#     Y_new = cs_x(gamma_new)
-
-#     x_prime = cs_x.derivative()
-#     x_double_prime = cs_x.derivative(2)
-
-#     y_prime = cs_y.derivative()
-#     y_double_prime = cs_y.derivative(2)
-
-#     dx = x_prime(gamma_new)
-#     ddx = x_double_prime(gamma_new)
-
-#     dy = y_prime(gamma_new)
-#     ddy = y_double_prime(gamma_new)
-
-#     curvature = np.abs(dx * ddy - dy * ddx) / (dx**2 + dy**2) ** 1.5
-
-#     T_x = dx / np.sqrt(dx**2 + dy**2)
-#     T_y = dy / np.sqrt(dx**2 + dy**2)
-
-#     # 注意这里对曲线的约定
-#     N_x = -T_y
-#     N_y = T_x
-
-#     dT_dgamma = np.stack(
-#         (ddx / np.sqrt(dx**2 + dy**2), ddy / np.sqrt(dx**2 + dy**2)), axis=1
-#     )
-#     kappa_hat = np.stack((N_x, N_y), axis=1)
-
-#     return (
-#         X_new,
-#         Y_new,
-#         dx,
-#         dy,
-#         ddx,
-#         ddy,
-#         T_x,
-#         T_y,
-#         N_x,
-#         N_y,
-#         curvature,
-#         dT_dgamma,
-#         kappa_hat,
-#     )
-
 
 def rotation(beta: float, alpha: float) -> npt.NDArray[np.float64]:
     c_1, s_1 = np.cos(beta), np.sin(beta)
