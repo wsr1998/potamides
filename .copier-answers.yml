@@ -1,0 +1,12 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 2025.01.22-23-g967d81a
+_src_path: gh:scientific-python/cookie
+backend: hatch
+email: gnx996@ku.dk
+full_name: Sirui
+license: MIT
+org: wsr1998
+project_name: streamcurvature
+project_short_description: Constrain gravitational potential with stream curvature
+url: https://github.com/wsr1998/streamcurvature
+vcs: true

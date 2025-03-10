@@ -1,0 +1,172 @@
+[project]
+name = "streamcurvature"
+authors = [
+  { name = "Sirui", email = "gnx996@ku.dk" },
+]
+description = "Constrain gravitational potential with stream curvature"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
+]
+dynamic = ["version"]
+dependencies = [
+    "astropy>=6.1.7",
+    "gala>=1.9.1",
+    "numpy>=2.2.3",
+    "scipy>=1.15.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/wsr1998/streamcurvature"
+"Bug Tracker" = "https://github.com/wsr1998/streamcurvature/issues"
+Discussions = "https://github.com/wsr1998/streamcurvature/discussions"
+Changelog = "https://github.com/wsr1998/streamcurvature/releases"
+
+
+[dependency-groups]
+test = [
+  "optional-dependencies>=0.3.2",
+  "pytest >=6",
+  "pytest-cov >=3",
+  "sybil>=9.1.0",
+]
+dev = [
+  "ipykernel>=6.29.5",
+  "pre-commit>=4.1.0",
+  "pytest >=6",
+  "pytest-cov >=3",
+]
+docs = [
+  "sphinx>=7.0",
+  "myst_parser>=0.13",
+  "sphinx_copybutton",
+  "sphinx_autodoc_typehints",
+  "furo>=2023.08.17",
+]
+
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+
+[tool.hatch]
+version.source = "vcs"
+build.hooks.vcs.version-file = "src/streamcurvature/_version.py"
+
+[tool.hatch.envs.default]
+features = ["test"]
+scripts.test = "pytest {args}"
+
+
+[tool.uv]
+dev-dependencies = [
+  "streamcurvature[test]",
+]
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+  "-ra", "--showlocals", "--strict-markers", "--strict-config",
+  "-p no:doctest"  # using sybil
+]
+xfail_strict = true
+filterwarnings = [
+  "error",
+]
+log_cli_level = "INFO"
+testpaths = [
+  "src", "tests",
+]
+
+
+[tool.coverage]
+run.source = ["streamcurvature"]
+report.exclude_also = [
+  '\.\.\.',
+  'if typing.TYPE_CHECKING:',
+]
+
+[tool.mypy]
+files = ["src", "tests"]
+python_version = "3.9"
+warn_unused_configs = true
+strict = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+warn_unreachable = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = "streamcurvature.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+
+[tool.ruff]
+
+[tool.ruff.lint]
+extend-select = [
+  "ARG",      # flake8-unused-arguments
+  "B",        # flake8-bugbear
+  "C4",       # flake8-comprehensions
+  "EM",       # flake8-errmsg
+  "EXE",      # flake8-executable
+  "G",        # flake8-logging-format
+  "I",        # isort
+  "ICN",      # flake8-import-conventions
+  "NPY",      # NumPy specific rules
+  "PD",       # pandas-vet
+  "PGH",      # pygrep-hooks
+  "PIE",      # flake8-pie
+  "PL",       # pylint
+  "PT",       # flake8-pytest-style
+  "PTH",      # flake8-use-pathlib
+  "RET",      # flake8-return
+  "RUF",      # Ruff-specific
+  "SIM",      # flake8-simplify
+  "T20",      # flake8-print
+  "UP",       # pyupgrade
+  "YTT",      # flake8-2020
+]
+ignore = [
+  "PLR09",    # Too many <...>
+  "PLR2004",  # Magic value used in comparison
+  "EXE002",   # executable file missing shebang
+  "RUF003",    # doesn't like chinese commasx
+  "RET504",   # Unnecessary assignment before `return` statement
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T20"]
+"noxfile.py" = ["T20"]
+
+
+[tool.pylint]
+py-version = "3.9"
+ignore-paths = [".*/_version.py"]
+reports.output-format = "colorized"
+similarities.ignore-imports = "yes"
+messages_control.disable = [
+  "design",
+  "fixme",
+  "line-too-long",
+  "missing-module-docstring",
+  "missing-function-docstring",
+  "wrong-import-position",
+]
