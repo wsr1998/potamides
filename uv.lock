@@ -1661,6 +1661,7 @@ dependencies = [
     { name = "jaxtyping" },
     { name = "numpy" },
     { name = "scipy" },
+    { name = "typing-extensions" },
     { name = "unxt" },
 ]
 
@@ -1694,6 +1695,7 @@ requires-dist = [
     { name = "jaxtyping", specifier = ">=0.2.38" },
     { name = "numpy", specifier = ">=2.2.3" },
     { name = "scipy", specifier = ">=1.15.2" },
+    { name = "typing-extensions", specifier = ">=4.12.2" },
     { name = "unxt", specifier = ">=1.3.2" },
 ]
 
