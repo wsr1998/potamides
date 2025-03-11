@@ -5,7 +5,7 @@ authors = [
 ]
 description = "Constrain gravitational potential with stream curvature"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
   "Development Status :: 1 - Planning",
   "Intended Audience :: Science/Research",
@@ -15,7 +15,6 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -25,9 +24,13 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "astropy>=6.1.7",
-    "gala>=1.9.1",
+    "galax",
+    "jax<0.4.36",
+    "jaxtyping>=0.2.38",
     "numpy>=2.2.3",
     "scipy>=1.15.2",
+    "typing-extensions>=4.12.2",
+    "unxt>=1.3.2",
 ]
 
 [project.urls]
@@ -68,15 +71,9 @@ build-backend = "hatchling.build"
 version.source = "vcs"
 build.hooks.vcs.version-file = "src/streamcurvature/_version.py"
 
-[tool.hatch.envs.default]
-features = ["test"]
-scripts.test = "pytest {args}"
 
-
-[tool.uv]
-dev-dependencies = [
-  "streamcurvature[test]",
-]
+[tool.uv.sources]
+galax = { git = "https://github.com/GalacticDynamics/galax.git" }
 
 
 [tool.pytest.ini_options]
@@ -104,7 +101,7 @@ report.exclude_also = [
 
 [tool.mypy]
 files = ["src", "tests"]
-python_version = "3.9"
+python_version = "3.11"
 warn_unused_configs = true
 strict = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
@@ -116,6 +113,17 @@ disallow_incomplete_defs = false
 module = "streamcurvature.*"
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
+disable_error_code = ["name-defined"]
+
+[[tool.mypy.overrides]]
+module = [
+  "interpax.*",
+  "jax.*",
+  "jaxtyping.*",
+  "scipy.*",
+  "unxt.*",
+]
+ignore_missing_imports = true
 
 
 [tool.ruff]
@@ -150,6 +158,10 @@ ignore = [
   "EXE002",   # executable file missing shebang
   "RUF003",    # doesn't like chinese commasx
   "RET504",   # Unnecessary assignment before `return` statement
+  "F722",     # reason: ruff doesn't like jaxtyping annotations
+  "B008",    # Do not perform function call in argument defaults;
+  "F821",    # Undefined name. reason: jaxtyping annotations
+  "COM812",   # Add trailing comma
 ]
 
 [tool.ruff.lint.per-file-ignores]
