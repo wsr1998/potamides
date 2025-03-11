@@ -29,20 +29,31 @@ QorVSzN3: TypeAlias = SzN3 | QuSzN3
 log2pi = jnp.log(2 * jnp.pi)
 
 
+@partial(jax.jit, inline=True)
+def rotation_z(theta_z: Sz0) -> Real[Array, "3 3"]:
+    """Rotation about the fixed z-axis by theta_z (counterclockwise)."""
+    c, s = jnp.cos(theta_z), jnp.sin(theta_z)
+    return jnp.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+
+@partial(jax.jit, inline=True)
+def rotation_x(theta_x: Sz0) -> Real[Array, "3 3"]:
+    """Rotation about the fixed x-axis by theta_x (counterclockwise)."""
+    c, s = jnp.cos(theta_x), jnp.sin(theta_x)
+    return jnp.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+
+
 @partial(jax.jit)
-def rotation(beta: LikeSz0, alpha: LikeSz0) -> Real[Array, "3 3"]:
-    c_1, s_1 = jnp.cos(beta), jnp.sin(beta)
-    R_y = jnp.array([[c_1, 0, s_1], [0, 1, 0], [-s_1, 0, c_1]])
-    c_2, s_2 = jnp.cos(alpha), jnp.sin(alpha)
-    R_z = jnp.array([[c_2, -s_2, 0], [s_2, c_2, 0], [0, 0, 1]])
-    return R_z @ R_y
+def total_rotation(theta_z: Sz0, theta_x: Sz0) -> Real[Array, "3 3"]:
+    """First rotate about z (fixed) by theta_z, then about x (fixed) by theta_x."""
+    return rotation_x(theta_x) @ rotation_z(theta_z)
 
 
 @partial(jax.jit, static_argnames=("withdisk",))
 def get_acceleration(
     pos: QorVSzN3,  # [kpc]
-    beta: LikeQorVSz0,
-    alpha: LikeQorVSz0,
+    rot_z: LikeQorVSz0,
+    rot_x: LikeQorVSz0,
     q1: LikeSz0,
     q2: LikeSz0,
     rs_halo: LikeQorVSz0 = 16,  # [kpc]
@@ -61,8 +72,8 @@ def get_acceleration(
     ----------
     pos
       An array of shape (N, 3) where N is the number of postitons. Each posititon is a 3D coordinate (x, y, z).
-    beta, alpha
-      Rotation angle around the y-axis and z-axis, respectively, in the unit of radians.
+    beta, rot_zp
+      Rotation angle [radians] around the y-axis and z'-axis, respectively.
     q1, q2
       Halo flattening.
     rs_halo, vc_halo
@@ -97,7 +108,7 @@ def get_acceleration(
         disk_pot = gp.MiyamotoNagaiPotential(m_tot=Mdisk, a=3, b=0.5, units=galactic)
 
         # Calculate the position in the disk's reference frame
-        R = rotation(beta, alpha)
+        R = total_rotation(rot_z, rot_x)
         pos_prime = R @ pos
         # Calculate the acceleration in the disk's frame and convert it back to the halp's frame
         acc_disk_prime = disk_pot.acceleration(pos_prime, t=0)
@@ -115,20 +126,23 @@ def get_acceleration(
 
 @partial(jax.jit)
 def get_angles(acc_xy_unit: SzN2, kappa_hat: SzN2) -> Real[Array, "N"]:
-    """
-    Calculate the angles between the normal vector at given position along the stream and the acceleration at given position along the stream.
+    r"""Return angle between the normal and acceleration vectors at a position.
+
+    Calculate the angles between the normal vector at given position along the
+    stream and the acceleration at given position along the stream.
 
     Parameters
     ----------
     acc_xy_unit
-      An array of shape (N, 2) representing the planar acceleration at each input position.
+        An array representing the planar acceleration at each input position.
+        Shape (N, 2).
     kappa_hat
-      An array of shape (N, 2). The unit curvature vector (or named normal vector).
+        The unit curvature vector (or named normal vector). Shape (N, 2).
 
-    Returns:
-    ----------
+    Returns
+    -------
     angles
-      An array of angles in radians in the range ``[-pi, pi]``, with shape (N,).
+        An array of angles in radians in the range (-pi, pi), with shape (N,).
     """
 
     dot_product = jnp.einsum("ij,ij->i", acc_xy_unit, kappa_hat)
