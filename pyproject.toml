@@ -24,7 +24,6 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "astropy>=6.1.7",
-    "gala>=1.9.1",
     "galax",
     "jax<0.4.36",
     "jaxtyping>=0.2.38",
