@@ -9,7 +9,6 @@ from __future__ import annotations
 __all__ = [
     "__version__",
     "get_acceleration",
-    "get_angles",
     "get_likelihood",
     # Modules
     "utils",
@@ -18,4 +17,4 @@ __all__ = [
 
 from . import utils
 from ._version import version as __version__
-from .stream_func import get_acceleration, get_angles, get_likelihood
+from .stream_func import get_acceleration, get_likelihood
