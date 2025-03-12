@@ -28,6 +28,8 @@ QorVSzN3: TypeAlias = SzN3 | QuSzN3
 
 log2pi = jnp.log(2 * jnp.pi)
 
+# ============================================================================
+
 
 @partial(jax.jit, inline=True)
 def rotation_z(theta_z: Sz0) -> Real[Array, "3 3"]:
@@ -47,6 +49,9 @@ def rotation_x(theta_x: Sz0) -> Real[Array, "3 3"]:
 def total_rotation(theta_z: Sz0, theta_x: Sz0) -> Real[Array, "3 3"]:
     """First rotate about z (fixed) by theta_z, then about x (fixed) by theta_x."""
     return rotation_x(theta_x) @ rotation_z(theta_z)
+
+
+# ============================================================================
 
 
 @partial(jax.jit, static_argnames=("withdisk",))
@@ -148,6 +153,9 @@ def get_angles(acc_xy_unit: SzN2, kappa_hat: SzN2) -> Real[Array, "N"]:
     dot_product = jnp.einsum("ij,ij->i", acc_xy_unit, kappa_hat)
     cross_product = jnp.cross(acc_xy_unit, kappa_hat)
     return jnp.atan2(cross_product, dot_product)
+
+
+# ============================================================================
 
 
 @partial(jax.jit, static_argnames=("tangent_condition", "debug"))
