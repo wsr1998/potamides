@@ -15,3 +15,5 @@ SzN2: TypeAlias = Real[Array, "N 2"]
 SzN3: TypeAlias = Real[Array, "N 3"]
 QuSzN3: TypeAlias = Real[u.AbstractQuantity, "N 3"]
 QorVSzN3: TypeAlias = SzN3 | QuSzN3
+
+SzData: TypeAlias = Real[Array, "data"]
