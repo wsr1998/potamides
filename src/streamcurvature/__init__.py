@@ -18,4 +18,5 @@ __all__ = [  # noqa: RUF022
 
 from . import utils
 from ._version import version as __version__
-from .stream_func import get_acceleration, get_angles, get_likelihood
+from .accelerations import get_acceleration
+from .likelihood import get_angles, get_likelihood
