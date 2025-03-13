@@ -129,6 +129,9 @@ def get_acceleration(
     return acc_xy_unit
 
 
+# ============================================================================
+
+
 @partial(jax.jit)
 def get_angles(acc_xy_unit: SzN2, kappa_hat: SzN2) -> Real[Array, "N"]:
     r"""Return angle between the normal and acceleration vectors at a position.
