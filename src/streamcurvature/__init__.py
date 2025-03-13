@@ -12,6 +12,7 @@ __all__ = [  # noqa: RUF022
     "get_likelihood",
     "get_angles",
     "optimize_spline_knots",
+    "get_tangents_and_curvature",
     # Modules
     "utils",
 ]
@@ -20,5 +21,5 @@ __all__ = [  # noqa: RUF022
 from . import utils
 from ._version import version as __version__
 from .accelerations import get_acceleration
-from .likelihood import get_angles, get_likelihood
+from .likelihood import get_angles, get_likelihood, get_tangents_and_curvature
 from .spline_fit import optimize_spline_knots

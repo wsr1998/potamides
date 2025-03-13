@@ -4,6 +4,7 @@ __all__: list[str] = []
 
 from functools import partial
 
+import interpax
 import jax
 import jax.numpy as jnp
 import numpy as np  # type: ignore[import-not-found]
@@ -14,6 +15,35 @@ from jaxtyping import Array, Bool, Real
 from .custom_types import Sz0, SzN, SzN2
 
 log2pi = jnp.log(2 * jnp.pi)
+
+
+# ============================================================================
+
+
+@partial(jax.jit)
+def get_tangents(gamma_eval: Sz0, gammas: SzN, x: SzN, y: SzN) -> SzN2:
+    spl_x = interpax.Interpolator1D(gammas, x, method="cubic2")
+    Interp_y = interpax.Interpolator1D(gammas, y, method="cubic2")
+
+    dx_dgamma = jax.grad(spl_x)(gamma_eval)
+    dy_gamma = jax.grad(Interp_y)(gamma_eval)
+    mag = jnp.sqrt(dx_dgamma**2 + dy_gamma**2)
+
+    dx_dgamma_hat = dx_dgamma / mag
+    dy_dgamma_hat = dy_gamma / mag
+
+    return jnp.array([dx_dgamma_hat, dy_dgamma_hat])
+
+
+@partial(jax.vmap, in_axes=(0, None, None, None))
+@partial(jax.jit)
+def get_tangents_and_curvature(
+    gamma_eval: Sz0, gammas: SzN, x: SzN, y: SzN
+) -> tuple[SzN2, SzN2]:
+    tangents = get_tangents(gamma_eval, gammas, x, y)
+    curv = jax.jacfwd(get_tangents)(gamma_eval, gammas, x, y)
+    curv_mag = jnp.sqrt(curv[0] ** 2 + curv[1] ** 2)
+    return tangents, curv / curv_mag
 
 
 # ============================================================================
