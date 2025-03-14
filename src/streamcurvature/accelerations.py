@@ -4,10 +4,10 @@ __all__: list[str] = []
 
 from functools import partial
 
-import galax.potential as gp  # type: ignore[import-not-found]
+import galax.potential as gp
 import jax
 import jax.numpy as jnp
-import numpy as np  # type: ignore[import-not-found]
+import numpy as np
 import unxt as u
 from jaxtyping import Array, Real
 from unxt.quantity import AllowValue
@@ -102,7 +102,7 @@ def get_acceleration(
         # Calculate the position in the disk's reference frame
         R = total_rotation(rot_z, rot_x)
         pos_prime = R @ pos
-        # Calculate the acceleration in the disk's frame and convert it back to the halp's frame
+        # Calculate the acceleration in the disk's frame and convert it back to the halo's frame
         acc_disk_prime = disk_pot.acceleration(pos_prime, t=0)
         acc_disk = R.T @ acc_disk_prime
         acc_halo = halo_pot.acceleration(pos, t=0)

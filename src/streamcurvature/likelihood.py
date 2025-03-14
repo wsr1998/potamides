@@ -8,12 +8,12 @@ import equinox as eqx
 import interpax
 import jax
 import jax.numpy as jnp
-import numpy as np  # type: ignore[import-not-found]
-import numpy.typing as npt  # type: ignore[import-not-found]
+import numpy as np
+import numpy.typing as npt
 from jax import lax
 from jaxtyping import Array, Bool, Real
 
-from .custom_types import Sz0, SzN, SzN2
+from .custom_types import Sz0, Sz2, SzN, SzN2
 
 log2pi = jnp.log(2 * jnp.pi)
 
@@ -29,10 +29,24 @@ def get_tangents(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> SzN2:
 
 
 @partial(eqx.filter_jit)
-def get_unit_tangents(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> SzN2:
+def get_unit_tangents(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> Sz2:
     """Return T_hat."""
     tangents = get_tangents(gamma_eval, spline)
     return tangents / jnp.linalg.vector_norm(tangents)
+
+
+@partial(eqx.filter_jit)
+def get_dThat_dgamma(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> Sz2:
+    """Return dT_hat/."""
+    return jax.jacfwd(get_unit_tangents)(gamma_eval, spline)
+
+
+@partial(eqx.filter_jit)
+def get_unit_curvature(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> Sz2:
+    """Return dT_hat/."""
+    dThat_dgamma = get_dThat_dgamma(gamma_eval, spline)
+    unit_curvature = dThat_dgamma / jnp.linalg.vector_norm(dThat_dgamma)
+    return unit_curvature
 
 
 @partial(jax.vmap, in_axes=(0, None))
@@ -41,9 +55,7 @@ def get_unit_tangents_and_curvature(
     gamma_eval: Sz0, spline: interpax.Interpolator1D
 ) -> tuple[SzN2, SzN2]:
     T_hat = get_unit_tangents(gamma_eval, spline)
-
-    dThat_dgamma = jax.jacfwd(get_unit_tangents)(gamma_eval, spline)
-    unit_curvature = dThat_dgamma / jnp.linalg.vector_norm(dThat_dgamma)
+    unit_curvature = get_unit_curvature(gamma_eval, spline)
 
     return T_hat, unit_curvature
 
@@ -51,6 +63,13 @@ def get_unit_tangents_and_curvature(
 @partial(jax.vmap, in_axes=(0, None))
 @partial(eqx.filter_jit)
 def get_dl_dgamma(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> Sz0:
+    """Return the derivative of the arc-length with respect to gamma.
+
+    $$
+    \frac{d\ell}{d\gamma} = \sqrt{\left(\frac{dx}{d\gamma}\right)^2 + \left(\frac{dy}{d\gamma}\right)^2}
+    $$
+
+    """
     return jnp.hypot(get_tangents(gamma_eval, spline))
 
 
@@ -156,7 +175,7 @@ def get_likelihood(
         else:
             # 这里不考虑tangent condition的意思就是说直接把zero curvature的点全部扔掉
             ln_normal = jnp.zeros(N, dtype=kappa_hat.dtype)
-            ln_like = N_def * (f1_logf1 + f2_logf2 + 0.0)
+            ln_like = N * (f1_logf1 + f2_logf2 + 0.0)
 
         return ln_like, ln_normal, f1_logf1, f2_logf2, f3_logf3
 
