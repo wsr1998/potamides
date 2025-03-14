@@ -4,6 +4,7 @@ __all__: list[str] = []
 
 from functools import partial
 
+import equinox as eqx
 import interpax
 import jax
 import jax.numpy as jnp
@@ -20,30 +21,37 @@ log2pi = jnp.log(2 * jnp.pi)
 # ============================================================================
 
 
-@partial(jax.jit)
-def get_tangents(gamma_eval: Sz0, gammas: SzN, x: SzN, y: SzN) -> SzN2:
-    spl_x = interpax.Interpolator1D(gammas, x, method="cubic2")
-    Interp_y = interpax.Interpolator1D(gammas, y, method="cubic2")
-
-    dx_dgamma = jax.grad(spl_x)(gamma_eval)
-    dy_gamma = jax.grad(Interp_y)(gamma_eval)
-    mag = jnp.sqrt(dx_dgamma**2 + dy_gamma**2)
-
-    dx_dgamma_hat = dx_dgamma / mag
-    dy_dgamma_hat = dy_gamma / mag
-
-    return jnp.array([dx_dgamma_hat, dy_dgamma_hat])
+@partial(eqx.filter_jit)
+def get_tangents(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> SzN2:
+    """Return the tangent vector at a given position along the stream."""
+    ddata_dgamma = jax.jacrev(spline)(gamma_eval)
+    return ddata_dgamma
 
 
-@partial(jax.vmap, in_axes=(0, None, None, None))
-@partial(jax.jit)
-def get_tangents_and_curvature(
-    gamma_eval: Sz0, gammas: SzN, x: SzN, y: SzN
+@partial(eqx.filter_jit)
+def get_unit_tangents(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> SzN2:
+    """Return T_hat."""
+    tangents = get_tangents(gamma_eval, spline)
+    return tangents / jnp.linalg.vector_norm(tangents)
+
+
+@partial(jax.vmap, in_axes=(0, None))
+@partial(eqx.filter_jit)
+def get_unit_tangents_and_curvature(
+    gamma_eval: Sz0, spline: interpax.Interpolator1D
 ) -> tuple[SzN2, SzN2]:
-    tangents = get_tangents(gamma_eval, gammas, x, y)
-    curv = jax.jacfwd(get_tangents)(gamma_eval, gammas, x, y)
-    curv_mag = jnp.sqrt(curv[0] ** 2 + curv[1] ** 2)
-    return tangents, curv / curv_mag
+    T_hat = get_unit_tangents(gamma_eval, spline)
+
+    dThat_dgamma = jax.jacfwd(get_unit_tangents)(gamma_eval, spline)
+    unit_curvature = dThat_dgamma / jnp.linalg.vector_norm(dThat_dgamma)
+
+    return T_hat, unit_curvature
+
+
+@partial(jax.vmap, in_axes=(0, None))
+@partial(eqx.filter_jit)
+def get_dl_dgamma(gamma_eval: Sz0, spline: interpax.Interpolator1D) -> Sz0:
+    return jnp.hypot(get_tangents(gamma_eval, spline))
 
 
 # ============================================================================

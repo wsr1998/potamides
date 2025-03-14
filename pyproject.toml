@@ -28,6 +28,7 @@ dependencies = [
     "jax<0.4.36",
     "jaxopt>=0.8.3",
     "jaxtyping>=0.2.38",
+    "matplotlib>=3.10.1",
     "numpy>=2.2.3",
     "optax>=0.2.4",
     "scipy>=1.15.2",
@@ -119,10 +120,14 @@ disable_error_code = ["name-defined"]
 
 [[tool.mypy.overrides]]
 module = [
+  "equinox.*",
+  "galax.*",
   "interpax.*",
   "jax.*",
   "jaxopt.*",
   "jaxtyping.*",
+  "matplotlib.*",
+  "numpy.*",
   "optax.*",
   "scipy.*",
   "unxt.*",

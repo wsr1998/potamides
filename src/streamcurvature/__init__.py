@@ -12,14 +12,21 @@ __all__ = [  # noqa: RUF022
     "get_likelihood",
     "get_angles",
     "optimize_spline_knots",
-    "get_tangents_and_curvature",
+    "get_unit_tangents_and_curvature",
+    "split_data",
+    "make_monotonic_gamma_and_data",
     # Modules
     "utils",
+    "plot",
 ]
 
 
-from . import utils
+from . import plot, utils
 from ._version import version as __version__
 from .accelerations import get_acceleration
-from .likelihood import get_angles, get_likelihood, get_tangents_and_curvature
-from .spline_fit import optimize_spline_knots
+from .likelihood import get_angles, get_likelihood, get_unit_tangents_and_curvature
+from .spline_tools import (
+    make_monotonic_gamma_and_data,
+    optimize_spline_knots,
+    split_data,
+)
