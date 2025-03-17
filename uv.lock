@@ -1994,7 +1994,7 @@ requires-dist = [
 dev = [
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "pre-commit", specifier = ">=4.1.0" },
-    { name = "pytest", specifier = ">=6" },
+    { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=3" },
 ]
 docs = [

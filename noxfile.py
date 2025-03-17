@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Configuration for Nox."""
 
 import argparse
 import shutil

@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Test the package itself."""
 
 import importlib.metadata
 

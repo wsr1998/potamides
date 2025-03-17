@@ -2,6 +2,8 @@
 name = "streamcurvature"
 authors = [
   { name = "Sirui", email = "gnx996@ku.dk" },
+  { name = "Nathaniel Starkman", email = "starkman@mit.edu"},
+  { name = "Jacob Nibauer", email = "jnibauer@princeton.edu"},
 ]
 description = "Constrain gravitational potential with stream curvature"
 readme = "README.md"
@@ -53,7 +55,7 @@ test = [
 dev = [
   "ipykernel>=6.29.5",
   "pre-commit>=4.1.0",
-  "pytest >=6",
+  "pytest >=8",
   "pytest-cov >=3",
 ]
 docs = [
