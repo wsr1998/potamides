@@ -9,10 +9,12 @@ from __future__ import annotations
 __all__ = [  # noqa: RUF022
     "__version__",
     "get_acceleration",
-    "get_likelihood",
+    "compute_likelihood",
+    "compute_tangent",
+    "compute_unit_tangent",
     "get_angles",
+    "compute_unit_curvature",
     "optimize_spline_knots",
-    "get_unit_tangents_and_curvature",
     "split_data",
     "make_monotonic_gamma_and_data",
     # Modules
@@ -24,7 +26,13 @@ __all__ = [  # noqa: RUF022
 from . import plot, utils
 from ._version import version as __version__
 from .accelerations import get_acceleration
-from .likelihood import get_angles, get_likelihood, get_unit_tangents_and_curvature
+from .likelihood import (
+    compute_likelihood,
+    compute_tangent,
+    compute_unit_curvature,
+    compute_unit_tangent,
+    get_angles,
+)
 from .spline_tools import (
     make_monotonic_gamma_and_data,
     optimize_spline_knots,

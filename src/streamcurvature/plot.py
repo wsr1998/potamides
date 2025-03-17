@@ -14,8 +14,8 @@ from matplotlib.cm import ScalarMappable
 
 from .custom_types import SzN
 from .likelihood import (
-    get_unit_curvature,
-    get_unit_tangents,
+    compute_unit_curvature,
+    compute_unit_tangent,
 )
 
 
@@ -112,7 +112,7 @@ def plot_tangents(
         _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
     points = track(gamma)
-    tangents_hat = jax.vmap(get_unit_tangents, in_axes=(0, None))(gamma, track)
+    tangents_hat = jax.vmap(compute_unit_tangent, in_axes=(0, None))(gamma, track)
 
     ax.quiver(
         points[subselect, 0],
@@ -140,7 +140,7 @@ def plot_curvature(
         _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
     points = track(gamma)
-    curvature_hat = jax.vmap(get_unit_curvature, in_axes=(0, None))(gamma, track)
+    curvature_hat = jax.vmap(compute_unit_curvature, in_axes=(0, None))(gamma, track)
 
     ax.quiver(
         points[subselect, 0],
