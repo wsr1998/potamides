@@ -85,7 +85,7 @@ def plot_theta_of_gamma(
     ax.text(0.75, 2.5, "Rule out", color="k", ha="center", va="center")
 
     # Add labels
-    ax.set(xlabel=r"$\gamma$", ylabel=r"$\theta$", xlim=(-1, 1), ylim=(-ylim, ylim))
+    ax.set(xlabel=r"$\gamma$", ylabel=r"$\theta$", ylim=(-ylim, ylim))
     ax.minorticks_on()
 
     return fig, ax
@@ -122,10 +122,11 @@ def plot_acceleration_field(
         Y,
         acc_hat_grid[:, 0],
         acc_hat_grid[:, 1],
-        color="gray",
+        color=(0.5, 0.56, 0.5),  # gray-green
         width=vec_width,
         scale=vec_scale,
-        label="Accelerations (global)",
+        label=r"$\vec{a}$ (global)",
+        alpha=0.5,
     )
 
     return ax
@@ -139,6 +140,8 @@ def plot_tangents(
     ax: plt.Axes | None = None,
     vec_width: float = 0.003,
     vec_scale: float = 30,
+    color: str = "red",
+    label: str = r"$\hat{T}$",
 ) -> plt.Axes:
     if ax is None:
         _, ax = plt.subplots(dpi=150, figsize=(10, 10))
@@ -151,9 +154,9 @@ def plot_tangents(
         points[subselect, 1],
         tangents_hat[subselect, 0],
         tangents_hat[subselect, 1],
-        color="blue",
+        color=color,
         scale=vec_scale,
-        label=r"$\hat{T}$",
+        label=label,
         width=vec_width,
     )
     return ax
@@ -167,6 +170,8 @@ def plot_curvature(
     ax: plt.Axes | None = None,
     vec_width: float = 0.003,
     vec_scale: float = 30,
+    color: str = "blue",
+    label: str = r"$\hat{\kappa}$",
 ) -> plt.Axes:
     if ax is None:
         _, ax = plt.subplots(dpi=150, figsize=(10, 10))
@@ -179,9 +184,9 @@ def plot_curvature(
         points[subselect, 1],
         curvature_hat[subselect, 0],
         curvature_hat[subselect, 1],
-        color="blue",
+        color=color,
         scale=vec_scale,
-        label=r"$\hat{\kappa}$",
+        label=label,
         width=vec_width,
     )
     return ax
@@ -194,6 +199,8 @@ def plot_data_spline_tangent_curvature_acceleration(
     spline: interpax.Interpolator1D,
     *,
     ax: plt.Axes | None = None,
+    xlim: tuple[float, float] = (-250, 250),
+    ylim: tuple[float, float] = (-250, 250),
 ) -> tuple[plt.Figure, plt.Axes]:
     if ax is None:
         fig, ax = plt.subplots(dpi=150, figsize=(10, 10))
@@ -206,13 +213,12 @@ def plot_data_spline_tangent_curvature_acceleration(
     _gamma = jnp.linspace(gamma_eval.min(), gamma_eval.max(), 500)
 
     # Acceleration grid
-    xylim = 500
     N_acc = 20
 
     plot_acceleration_field(
         potential,
-        xlim=(-xylim, xylim),
-        ylim=(-xylim, xylim),
+        xlim=xlim,
+        ylim=ylim,
         ax=ax,
         grid_size=N_acc,
         vec_width=vec_width,
@@ -253,7 +259,7 @@ def plot_data_spline_tangent_curvature_acceleration(
     )
 
     # Plot properties
-    ax.set(xlabel="X (kpc)", ylabel="Y (kpc)", xlim=(-250, 250), ylim=(-250, 250))
+    ax.set(xlabel="X (pixel)", ylabel="Y (pixel)", xlim=xlim, ylim=ylim)
     ax.set_aspect("equal")
     ax.legend()
 
