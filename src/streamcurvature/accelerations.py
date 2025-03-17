@@ -42,12 +42,14 @@ def total_rotation(theta_z: Sz0, theta_x: Sz0) -> Real[Array, "3 3"]:
 
 
 @partial(jax.jit, static_argnames=("withdisk",))
-def get_acceleration(
+def compute_accelerations(
     pos: QorVSzN3,  # [kpc]
-    rot_z: LikeQorVSz0,
-    rot_x: LikeQorVSz0,
-    q1: LikeSz0,
-    q2: LikeSz0,
+    rot_z: LikeQorVSz0 = 0.0,
+    rot_x: LikeQorVSz0 = 0.0,
+    q1: LikeSz0 = 1.0,
+    q2: LikeSz0 = 1.0,
+    q3: LikeSz0 = 1.0,
+    phi: LikeSz0 = 0.0,
     rs_halo: LikeQorVSz0 = 16,  # [kpc]
     vc_halo: LikeQorVSz0 = u.Quantity(250, "km / s").ustrip("kpc/Myr"),
     origin: LikeQorVSz0 = np.array([0.0, 0.0, 0.0]),  # [kpc]
@@ -91,12 +93,11 @@ def get_acceleration(
     pos = u.ustrip(AllowValue, galactic["length"], pos)  # Q(/Array) -> Array
 
     halo_base_pot = gp.LMJ09LogarithmicPotential(
-        v_c=vc_halo, r_s=rs_halo, q1=q1, q2=q2, q3=1, phi=0, units=galactic
+        v_c=vc_halo, r_s=rs_halo, q1=q1, q2=q2, q3=q3, phi=phi, units=galactic
     )
+    halo_pot = gp.TranslatedPotential(halo_base_pot, translation=origin)
 
     if withdisk:
-        halo_pot = gp.TranslatedPotential(halo_base_pot, translation=origin)
-
         disk_pot = gp.MiyamotoNagaiPotential(m_tot=Mdisk, a=3, b=0.5, units=galactic)
 
         # Calculate the position in the disk's reference frame
@@ -109,7 +110,7 @@ def get_acceleration(
 
         acc = acc_halo + acc_disk
     else:
-        acc = halo_base_pot.acceleration(pos, t=0)
+        acc = halo_pot.acceleration(pos, t=0)
 
     acc_unit = acc / jnp.linalg.norm(acc, axis=1, keepdims=True)
     acc_xy_unit = acc_unit[:, :2]  # Extract x-y components

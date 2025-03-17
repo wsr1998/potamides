@@ -4,11 +4,9 @@ Copyright (c) 2025 Sirui. All rights reserved.
 streamcurvature: Constrain gravitational potential with stream curvature
 """
 
-from __future__ import annotations
-
 __all__ = [  # noqa: RUF022
     "__version__",
-    "get_acceleration",
+    "compute_accelerations",
     "compute_likelihood",
     "compute_tangent",
     "compute_unit_tangent",
@@ -25,7 +23,7 @@ __all__ = [  # noqa: RUF022
 
 from . import plot, utils
 from ._version import version as __version__
-from .accelerations import get_acceleration
+from .accelerations import compute_accelerations
 from .likelihood import (
     compute_likelihood,
     compute_tangent,
