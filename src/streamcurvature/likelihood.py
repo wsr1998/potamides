@@ -142,7 +142,7 @@ def get_likelihood(
     ln_like : float
       The computed logarithm of the likelihood.
     """
-    # 注意thresh_f0和sigma_theta_deg的值是如何算出来的，我还不是很清楚
+    # TODO: figure out thresh_f0 and sigma_theta_deg values.
     #
     N = len(kappa_hat)
     nl = ~where_linear
@@ -165,15 +165,14 @@ def get_likelihood(
             acc_linear_align = jnp.where(
                 nl[:, None], acc_xy_unit * kappa_hat, jnp.zeros_like(kappa_hat)
             )
-            theta_T = (
-                jnp.pi / 2 - jnp.arccos(jnp.sum(acc_linear_align, axis=1))
-            )  # 不同的约定下，theta_T的结果可能相差一个正负号，但是后面计算中用的theta_T的平方，所以问题不大。
+            # Depending on the convention, the result of theta_T may differ by a sign, but since the square of theta_T is used later in the calculation, this is not a significant issue.
+            theta_T = jnp.pi / 2 - jnp.arccos(jnp.sum(acc_linear_align, axis=1))
             ln_normal = -0.5 * (
                 log2pi + jnp.log(sigma_theta2) + (theta_T - 0) ** 2 / sigma_theta2
             )
             ln_like = N * (f1_logf1 + f2_logf2 + f3_logf3) + jnp.sum(ln_normal)
         else:
-            # 这里不考虑tangent condition的意思就是说直接把zero curvature的点全部扔掉
+            # Not considering the tangent condition means directly discarding all zero-curvature points.
             ln_normal = jnp.zeros(N, dtype=kappa_hat.dtype)
             ln_like = N * (f1_logf1 + f2_logf2 + 0.0)
 
