@@ -1,7 +1,13 @@
 """Utilities."""
 
-__all__ = ["plot_data_spline_tangent_curvature_acceleration", "plot_theta_of_gamma"]
+__all__ = [
+    "get_angles",
+    "plot_data_spline_tangent_curvature_acceleration",
+    "plot_theta_of_gamma",
+]
 
+
+from functools import partial
 
 import galax.potential as gp
 import interpax
@@ -12,11 +18,37 @@ import numpy as np
 from jaxtyping import Array, Bool, Int, Real
 from matplotlib.cm import ScalarMappable
 
-from .custom_types import SzN
+from .custom_types import SzN, SzN2
 from .likelihood import (
     compute_unit_curvature,
     compute_unit_tangent,
 )
+
+
+@partial(jax.jit)
+def get_angles(acc_xy_unit: SzN2, kappa_hat: SzN2) -> SzN:
+    r"""Return angle between the normal and acceleration vectors at a position.
+
+    Calculate the angles between the normal vector at given position along the
+    stream and the acceleration at given position along the stream.
+
+    Parameters
+    ----------
+    acc_xy_unit
+        An array representing the planar acceleration at each input position.
+        Shape (N, 2).
+    kappa_hat
+        The unit curvature vector (or named normal vector). Shape (N, 2).
+
+    Returns
+    -------
+    angles
+        An array of angles in radians in the range (-pi, pi), with shape (N,).
+    """
+
+    dot_product = jnp.einsum("ij,ij->i", acc_xy_unit, kappa_hat)
+    cross_product = jnp.cross(acc_xy_unit, kappa_hat)
+    return jnp.atan2(cross_product, dot_product)
 
 
 def plot_theta_of_gamma(

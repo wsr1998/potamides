@@ -9,7 +9,7 @@ import interpax
 import jax
 import jax.numpy as jnp
 from jax import lax
-from jaxtyping import Array, Bool, Real
+from jaxtyping import Array, Bool
 
 from .custom_types import Sz0, Sz2, SzN, SzN2
 
@@ -252,35 +252,6 @@ def compute_darclength_dgamma(
     """
     # TODO: confirm that this equals L/2 for gamma \propto s
     return jnp.hypot(compute_tangent(gamma_eval, spline, forward=forward))
-
-
-# ============================================================================
-
-
-@partial(jax.jit)
-def get_angles(acc_xy_unit: SzN2, kappa_hat: SzN2) -> Real[Array, "N"]:
-    r"""Return angle between the normal and acceleration vectors at a position.
-
-    Calculate the angles between the normal vector at given position along the
-    stream and the acceleration at given position along the stream.
-
-    Parameters
-    ----------
-    acc_xy_unit
-        An array representing the planar acceleration at each input position.
-        Shape (N, 2).
-    kappa_hat
-        The unit curvature vector (or named normal vector). Shape (N, 2).
-
-    Returns
-    -------
-    angles
-        An array of angles in radians in the range (-pi, pi), with shape (N,).
-    """
-
-    dot_product = jnp.einsum("ij,ij->i", acc_xy_unit, kappa_hat)
-    cross_product = jnp.cross(acc_xy_unit, kappa_hat)
-    return jnp.atan2(cross_product, dot_product)
 
 
 # ============================================================================

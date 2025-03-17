@@ -31,8 +31,8 @@ from .likelihood import (
     compute_tangent,
     compute_unit_curvature,
     compute_unit_tangent,
-    get_angles,
 )
+from .plot import get_angles
 from .spline_tools import (
     make_monotonic_gamma_and_data,
     optimize_spline_knots,
