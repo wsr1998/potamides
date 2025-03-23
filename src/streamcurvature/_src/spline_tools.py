@@ -18,7 +18,6 @@ import jax
 import jax.numpy as jnp
 import optax
 import scipy.interpolate
-from jaxopt import OptaxSolver
 from jaxtyping import Array, Real
 
 from .custom_types import Sz0, SzData, SzData2, SzGamma, SzGamma2, SzN, SzN2
@@ -48,8 +47,8 @@ def point_to_point_distance(data: SzData2, /) -> SzGamma:
     --------
     >>> import jax.numpy as jnp
 
-    >>> x = jnp.array([])
-    ..
+    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [0, 2]])
+    >>> point_to_point_distance(data)
 
     """
     vec_p2p = jnp.diff(data, axis=0)  # vector pointing from p_{i} to p_{i+1}
@@ -257,7 +256,7 @@ def cost(
     return data_cost + curvature_cost
 
 
-@partial(jax.jit, static_argnames=("penalize_concavity_changes",))
+@partial(jax.jit)
 def optimize_spline_knots(
     init_params: SzN2,
     gamma_knots: SzN,
@@ -280,6 +279,7 @@ def optimize_spline_knots(
     sigmas: uncertainty on each datum
 
     """
+    from jaxopt import OptaxSolver
 
     opt = optax.adam(learning_rate=1e-3)  # TODO: try a better optimizer
     solver = OptaxSolver(opt=opt, fun=cost, maxiter=100_000)
