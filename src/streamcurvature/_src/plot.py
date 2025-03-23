@@ -19,10 +19,7 @@ from jaxtyping import Array, Bool, Int, Real
 from matplotlib.cm import ScalarMappable
 
 from .custom_types import SzN, SzN2
-from .likelihood import (
-    compute_unit_curvature,
-    compute_unit_tangent,
-)
+from .likelihood import compute_unit_curvature, compute_unit_tangent
 
 
 @partial(jax.jit)
@@ -44,48 +41,58 @@ def get_angles(acc_xy_unit: SzN2, kappa_hat: SzN2) -> SzN:
     -------
     angles
         An array of angles in radians in the range (-pi, pi), with shape (N,).
-    """
 
+    """
     dot_product = jnp.einsum("ij,ij->i", acc_xy_unit, kappa_hat)
     cross_product = jnp.cross(acc_xy_unit, kappa_hat)
     return jnp.atan2(cross_product, dot_product)
 
 
+PI_ON_2 = np.pi / 2
+
+
 def plot_theta_of_gamma(
-    qs: Real[Array, "Q"], gammas: Real[Array, "gamma"], thetas: Real[Array, "Q gamma"]
+    gamma: Real[Array, "gamma"],
+    param: Real[Array, "param"],
+    angles: Real[Array, "param gamma"],
+    *,
+    param_label: str = r"$q$",
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the angles as a function of gamma."""
-
     # Create colormap and normalization objects
     cmap = plt.get_cmap("viridis")
-    norm = plt.Normalize(vmin=jnp.min(qs), vmax=jnp.max(qs))
+    norm = plt.Normalize(vmin=jnp.min(param), vmax=jnp.max(param))
 
     fig, ax = plt.subplots(dpi=150)
 
     # Plot the angles for each gamma
-    for q, angles in zip(qs, thetas, strict=False):
-        ax.scatter(gammas, angles, color=cmap(norm(q)), s=1)
+    # TODO: more efficient loop.
+    for p, theta in zip(param, angles, strict=False):
+        ax.scatter(gamma, theta, color=cmap(norm(p)), s=1)
 
     # Add the colorbar
     sm = ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label(r"$q$")
+    cbar.set_label(param_label)
 
-    # Add the exclusion lines
-    ylim = 3
-    ax.axhspan(jnp.pi / 2, ylim, color="gray", alpha=0.5)
-    ax.axhline(jnp.pi / 2, color="k", label=r"$\pi/2$", alpha=0.5)
+    # Exclusion line for pi/2 to pi
+    ax.axhspan(PI_ON_2, np.pi, color="gray", alpha=0.5)
+    ax.axhline(PI_ON_2, color="k", label=r"$\pi/2$", alpha=0.5)
+    ax.text(
+        -0.85, PI_ON_2 + 0.2, r"$\theta > \pi/2$", color="k", ha="center", va="center"
+    )
+    ax.text(0.75, 2.5, "Ruled out", color="k", ha="center", va="center")
 
-    ax.axhspan(-ylim, -jnp.pi / 2, color="gray", alpha=0.5)
-    ax.axhline(-jnp.pi / 2, color="k", label=r"$\pi/2$", alpha=0.5)
+    # Exclusion line for -pi to -pi/2
+    ax.axhspan(-np.pi, -PI_ON_2, color="gray", alpha=0.5)
+    ax.axhline(-PI_ON_2, color="k", label=r"$\pi/2$", alpha=0.5)
+    ax.text(
+        -0.85, -PI_ON_2 - 0.2, r"$\theta < -\pi/2$", color="k", ha="center", va="center"
+    )
 
-    ax.text(-0.8, jnp.pi / 2 + 0.2, "> π/2", color="k", ha="center", va="center")
-    ax.text(-0.8, -jnp.pi / 2 - 0.2, "< -π/2", color="k", ha="center", va="center")
-    ax.text(0.75, 2.5, "Rule out", color="k", ha="center", va="center")
-
-    # Add labels
-    ax.set(xlabel=r"$\gamma$", ylabel=r"$\theta$", ylim=(-ylim, ylim))
+    # Axis labels
+    ax.set(xlabel=r"$\gamma$", ylabel=r"$\theta$", ylim=(-np.pi, np.pi))
     ax.minorticks_on()
 
     return fig, ax
@@ -147,7 +154,7 @@ def plot_tangents(
         _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
     points = track(gamma)
-    tangents_hat = jax.vmap(compute_unit_tangent, in_axes=(0, None))(gamma, track)
+    tangents_hat = jax.vmap(compute_unit_tangent, in_axes=(None, 0))(track, gamma)
 
     ax.quiver(
         points[subselect, 0],
@@ -177,7 +184,7 @@ def plot_curvature(
         _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
     points = track(gamma)
-    curvature_hat = jax.vmap(compute_unit_curvature, in_axes=(0, None))(gamma, track)
+    curvature_hat = jax.vmap(compute_unit_curvature, in_axes=(None, 0))(track, gamma)
 
     ax.quiver(
         points[subselect, 0],

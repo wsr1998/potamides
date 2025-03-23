@@ -1,5 +1,5 @@
 """
-Copyright (c) 2025 Sirui. All rights reserved.
+Copyright (c) 2025 EGGS collaboration. All rights reserved.
 
 streamcurvature: Constrain gravitational potential with stream curvature
 """
@@ -12,27 +12,20 @@ __all__ = [  # noqa: RUF022
     "compute_unit_tangent",
     "get_angles",
     "compute_unit_curvature",
-    "optimize_spline_knots",
-    "split_data",
-    "make_monotonic_gamma_and_data",
     # Modules
-    "utils",
     "plot",
+    "spline_tools",
 ]
 
 
-from . import plot, utils
-from ._version import version as __version__
-from .accelerations import compute_accelerations
-from .likelihood import (
+from . import spline_tools
+from ._src import plot
+from ._src.accelerations import compute_accelerations
+from ._src.likelihood import (
     compute_likelihood,
     compute_tangent,
     compute_unit_curvature,
     compute_unit_tangent,
 )
-from .plot import get_angles
-from .spline_tools import (
-    make_monotonic_gamma_and_data,
-    optimize_spline_knots,
-    split_data,
-)
+from ._src.plot import get_angles
+from ._version import version as __version__

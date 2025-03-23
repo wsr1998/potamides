@@ -1,6 +1,12 @@
 """Curvature analysis functions."""
 
-__all__: list[str] = []
+__all__ = [
+    "compute_dThat_dgamma",
+    "compute_darclength_dgamma",
+    "compute_tangent",
+    "compute_unit_curvature",
+    "compute_unit_tangent",
+]
 
 from functools import partial
 
@@ -16,13 +22,10 @@ from .custom_types import Sz0, Sz2, SzN, SzN2
 log2pi = jnp.log(2 * jnp.pi)
 
 
-# ============================================================================
-
-
 @partial(eqx.filter_jit)
-@partial(jnp.vectorize, signature="()->(2)", excluded=(1,))
+@partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
 def compute_tangent(
-    gamma_eval: Sz0, spline: interpax.Interpolator1D, *, forward: bool = True
+    spline: interpax.Interpolator1D, gamma_eval: Sz0, /, *, forward: bool = True
 ) -> SzN2:
     r"""Compute the tangent vector at a given position along the stream.
 
@@ -68,7 +71,7 @@ def compute_tangent(
     >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1))
 
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
-    >>> tangents = jnp.array([sc.compute_tangent(g, spline) for g in gamma])
+    >>> tangents = jnp.array([sc.compute_tangent(spline, g) for g in gamma])
     >>> print(tangents)  # Tangents at gamma = 0, pi/2, pi
     [[ 0.  2.]
      [-2.  0.]
@@ -80,9 +83,9 @@ def compute_tangent(
 
 
 @partial(eqx.filter_jit)
-@partial(jnp.vectorize, signature="()->(2)", excluded=(1,))
+@partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
 def compute_unit_tangent(
-    gamma_eval: Sz0, spline: interpax.Interpolator1D, *, forward: bool = True
+    spline: interpax.Interpolator1D, gamma_eval: Sz0, /, *, forward: bool = True
 ) -> Sz2:
     r"""Compute the unit tangent vector at a given position along the stream.
 
@@ -113,6 +116,7 @@ def compute_unit_tangent(
     --------
     Compute the unit tangent vector for specific points on the unit circle:
 
+    >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
     >>> import streamcurvature as sc
@@ -123,21 +127,21 @@ def compute_unit_tangent(
     >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1))
 
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
-    >>> unit_tangents = jnp.array([sc.compute_unit_tangent(g, spline) for g in gamma])
+    >>> unit_tangents = sc.compute_unit_tangent(spline, gamma)
     >>> print(unit_tangents)  # Unit tangents at gamma = 0, pi/2, pi
     [[ 0.  1.]
      [-1.  0.]
      [ 0. -1.]]
 
     """
-    tangents = compute_tangent(gamma_eval, spline, forward=forward)
+    tangents = compute_tangent(spline, gamma_eval, forward=forward)
     return tangents / jnp.linalg.vector_norm(tangents)
 
 
 @partial(eqx.filter_jit)
-@partial(jnp.vectorize, signature="()->(2)", excluded=(1,))
+@partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
 def compute_dThat_dgamma(
-    gamma_eval: Sz0, spline: interpax.Interpolator1D, *, forward: bool = True
+    spline: interpax.Interpolator1D, gamma_eval: Sz0, /, *, forward: bool = True
 ) -> Sz2:
     r"""Return the derivative of the unit tangent vector with respect to gamma.
 
@@ -179,14 +183,16 @@ def compute_dThat_dgamma(
     proportional to the curvature vector.
 
     """
-    dThat_dgamma_fn = (jax.jacfwd if forward else jax.jacrev)(compute_unit_tangent)
-    return dThat_dgamma_fn(gamma_eval, spline, forward=forward)
+    dThat_dgamma_fn = (jax.jacfwd if forward else jax.jacrev)(
+        compute_unit_tangent, argnums=1
+    )
+    return dThat_dgamma_fn(spline, gamma_eval, forward=forward)
 
 
 @partial(eqx.filter_jit)
-@partial(jnp.vectorize, signature="()->(2)", excluded=(1,))
+@partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
 def compute_unit_curvature(
-    gamma_eval: Sz0, spline: interpax.Interpolator1D, *, forward: bool = True
+    spline: interpax.Interpolator1D, gamma_eval: Sz0, /, *, forward: bool = True
 ) -> Sz2:
     r"""Return the unit curvature vector at a given position along the stream.
 
@@ -209,15 +215,15 @@ def compute_unit_curvature(
     $$ \hat{N} = \frac{\kappa \hat{N}}{\|\kappa \hat{N}\|}. $$
 
     """
-    dThat_dgamma = compute_dThat_dgamma(gamma_eval, spline, forward=forward)
+    dThat_dgamma = compute_dThat_dgamma(spline, gamma_eval, forward=forward)
     unit_curvature = dThat_dgamma / jnp.linalg.vector_norm(dThat_dgamma)
     return unit_curvature
 
 
 @partial(eqx.filter_jit)
-@partial(jnp.vectorize, signature="()->(2)", excluded=(1,))
+@partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
 def compute_darclength_dgamma(
-    gamma_eval: Sz0, spline: interpax.Interpolator1D, *, forward: bool = True
+    spline: interpax.Interpolator1D, gamma_eval: Sz0, /, *, forward: bool = True
 ) -> Sz0:
     """Return the derivative of the arc-length with respect to gamma.
 
@@ -251,7 +257,7 @@ def compute_darclength_dgamma(
 
     """
     # TODO: confirm that this equals L/2 for gamma \propto s
-    return jnp.hypot(compute_tangent(gamma_eval, spline, forward=forward))
+    return jnp.hypot(compute_tangent(spline, gamma_eval, forward=forward))
 
 
 # ============================================================================
