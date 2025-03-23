@@ -225,7 +225,7 @@ def compute_unit_curvature(
 def compute_darclength_dgamma(
     spline: interpax.Interpolator1D, gamma_eval: Sz0, /, *, forward: bool = True
 ) -> Sz0:
-    """Return the derivative of the arc-length with respect to gamma.
+    r"""Return the derivative of the arc-length with respect to gamma.
 
     On a 2D flat surface (the flat-sky approximation is reasonable for
     observations of extragalactic stellar streams) the differential arc-length
