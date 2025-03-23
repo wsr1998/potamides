@@ -324,6 +324,19 @@ def optimize_spline_knots(
 ) -> SzN:
     """Optimize spline knots to fit data.
 
+    .. warning::
+
+        If you use this function to change the locations of the knots then this
+        changes the arc-length of the spline. This can be problematic if gamma
+        is the normalized arc-length of the data. If you change the knots then
+        you should also change gamma accordingly. The easiest way to do this is
+        to:
+
+        1. evaluate the optimized spline on a dense array of old gamma values
+        2. call `make_gamma_from_data` on the new data to define a new gamma,
+        3. create a new spline with the new gamma. This spline will have the
+           same shape as the optimized spline but with the new gamma values.
+
     Parameters
     ----------
     init_params:
