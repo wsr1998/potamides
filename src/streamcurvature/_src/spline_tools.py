@@ -1,4 +1,4 @@
-"""Fit smooth spline."""
+"""Spline-related tools."""
 
 __all__ = [
     "interpax_PPoly_from_scipy_UnivariateSpline",
@@ -11,7 +11,7 @@ __all__ = [
 ]
 
 from functools import partial
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 import interpax
 import jax
@@ -49,6 +49,7 @@ def point_to_point_distance(data: SzData2, /) -> SzGamma:
 
     >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [0, 2]])
     >>> point_to_point_distance(data)
+    Array([1., 2., 1.], dtype=float64)
 
     """
     vec_p2p = jnp.diff(data, axis=0)  # vector pointing from p_{i} to p_{i+1}
@@ -61,9 +62,16 @@ def point_to_point_arclenth(data: SzData2, /) -> SzGamma:
 
     The data should be sorted, otherwise this doesn't make a lot of sense.
 
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+
+    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [0, 2]])
+    >>> point_to_point_arclenth(data)
+    Array([1., 3., 4.], dtype=float64)
+
     """
-    d_p2p = point_to_point_distance(data)
-    return jnp.cumsum(d_p2p)
+    return jnp.cumsum(point_to_point_distance(data))
 
 
 def make_gamma_from_data(data: SzData2) -> SzGamma:
@@ -83,6 +91,14 @@ def make_gamma_from_data(data: SzData2) -> SzGamma:
     guaranteed to be monotonically *increasing* since adjacent data points can
     have 0 distance. See `make_increasing_gamma_from_data` for a function that
     trims the data such that gamma is monotonically increasing.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+
+    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [0, 2]])
+    >>> make_gamma_from_data(data)
+    Array([-1.        ,  0.33333333,  1.        ], dtype=float64)
 
     """
     s = point_to_point_arclenth(data)  # running arc-length
@@ -128,6 +144,22 @@ def make_increasing_gamma_from_data(data: SzData2) -> tuple[SzGamma, SzGamma2]:
     data_trimmed : Array[real, (N-1, 2)]
         The data, with points where gamma is non-increasing trimmed out.
 
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+
+    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [1, 2], [0, 2]])
+    >>> gamma, data2 = make_increasing_gamma_from_data(data)
+    >>> gamma, data2
+    (Array([-1.        ,  0.33333333,  1.        ], dtype=float64),
+     Array([[0.5, 0. ],
+           [1. , 1. ],
+           [0.5, 2. ]], dtype=float64))
+
+    Note that the second point [1, 2] was removed since it was a repeat,
+    resulting in a "plateau" in gamma. Then the point-to-point mean was returned
+    as the new data.
+
     """
     # Define gamma from the data using p2p approximation
     gamma = make_gamma_from_data(data)  # (N,2) -> (N-1,)
@@ -149,7 +181,18 @@ def make_increasing_gamma_from_data(data: SzData2) -> tuple[SzGamma, SzGamma2]:
 # ============================================================================
 
 
+@runtime_checkable
 class ReduceFn(Protocol):
+    """Protocol for a function that reduces an array along an axis.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> isinstance(jnp.median, ReduceFn)
+    True
+
+    """
+
     def __call__(self, arr: Real[Array, "chunk"], /, axis: int) -> Sz0: ...
 
 
@@ -171,6 +214,21 @@ def reduce_point_density(
     that represents the curve then it necessarily forces a greater degree of
     smoothness. Combining this with `optimize_spline_knots` can produce a spline
     curve that better represents the smooth stream track.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+
+    >>> gamma = jnp.array([-1, 0, 0.5, 1])
+    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [0, 2]])
+
+    >>> gamma2, data2 = reduce_point_density(gamma, data, num_splits=1)
+    >>> gamma2
+    Array([-1.  ,  0.25,  1.  ], dtype=float64)
+    >>> data2
+    Array([[0. , 0. ],
+           [0.5, 1. ],
+           [0. , 2. ]], dtype=float64)
 
     """
     # Split and reduce gamma

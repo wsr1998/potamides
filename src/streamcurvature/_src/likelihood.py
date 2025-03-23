@@ -65,15 +65,15 @@ def compute_tangent(
     >>> import interpax
     >>> import streamcurvature as sc
 
-    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 600)
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> x = 2 * jnp.cos(gamma)
     >>> y = 2 * jnp.sin(gamma)
     >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1))
 
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
     >>> tangents = jnp.array([sc.compute_tangent(spline, g) for g in gamma])
-    >>> print(tangents)  # Tangents at gamma = 0, pi/2, pi
-    [[ 0.  2.]
+    >>> print(tangents.round(2))  # Tangents at gamma = 0, pi/2, pi
+    [[-0.  2.]
      [-2.  0.]
      [ 0. -2.]]
 
@@ -121,15 +121,15 @@ def compute_unit_tangent(
     >>> import interpax
     >>> import streamcurvature as sc
 
-    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 600)
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_00)
     >>> x = jnp.cos(gamma)
     >>> y = jnp.sin(gamma)
     >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1))
 
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
     >>> unit_tangents = sc.compute_unit_tangent(spline, gamma)
-    >>> print(unit_tangents)  # Unit tangents at gamma = 0, pi/2, pi
-    [[ 0.  1.]
+    >>> print(unit_tangents.round(2))  # Unit tangents at gamma = 0, pi/2, pi
+    [[-0.  1.]
      [-1.  0.]
      [ 0. -1.]]
 
