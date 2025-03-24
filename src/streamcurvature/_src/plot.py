@@ -66,9 +66,14 @@ def plot_theta_of_gamma(
     fig, ax = plt.subplots(dpi=150)
 
     # Plot the angles for each gamma
-    # TODO: more efficient loop.
-    for p, theta in zip(param, angles, strict=False):
-        ax.scatter(gamma, theta, color=cmap(norm(p)), s=1)
+    ax.scatter(
+        jnp.tile(gamma, angles.shape[0]),
+        angles.ravel(),
+        c=jnp.repeat(param, len(gamma)),
+        cmap=cmap,
+        norm=norm,
+        s=1,
+    )
 
     # Add the colorbar
     sm = ScalarMappable(norm=norm, cmap=cmap)
