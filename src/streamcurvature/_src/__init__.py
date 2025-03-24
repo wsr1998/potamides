@@ -1,0 +1,7 @@
+"""
+Copyright (c) 2025 EGGS collaboration. All rights reserved.
+
+streamcurvature: Constrain gravitational potential with stream curvature
+"""
+
+__all__: list[str] = []

@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Sphinx configuration."""
 
 import importlib.metadata
 from typing import Any
