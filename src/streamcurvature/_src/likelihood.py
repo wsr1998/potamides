@@ -1,30 +1,75 @@
 """Curvature analysis functions."""
 
-__all__ = [
-    "compute_likelihood",
-]
+__all__ = ["compute_ln_lik_curved", "compute_ln_likelihood"]
 
 from functools import partial
+from typing import Any
 
 import jax
 import jax.numpy as jnp
 from jax import lax
 from jaxtyping import Array, Bool
 
-from .custom_types import Sz0, SzN, SzN2
+from .custom_types import Sz0, SzGamma2
 
 log2pi = jnp.log(2 * jnp.pi)
 
 
-@partial(jax.jit, static_argnames=("debug",))
-def compute_likelihood(
-    kappa_hat: SzN2,
-    acc_xy_unit: SzN2,
-    where_straight: Bool[Array, "N"] | None = None,
+@partial(jax.jit)
+def compute_ln_lik_curved(
+    ngamma: Sz0, f1_logf1: Sz0, f2_logf2: Sz0, f3_logf3: Sz0
+) -> Sz0:
+    """Log-Likelihood of the curved part of the stream."""
+    return ngamma * (f1_logf1 + f2_logf2 + f3_logf3)
+
+
+@partial(jax.jit)
+def compute_lnlik_good(
+    kappa_hat: SzGamma2,
+    acc_xy_unit: SzGamma2,
+    where_straight: Bool[Array, "gamma"],
+    f1_logf1: Sz0,
+    f2_logf2: Sz0,
+    f3_logf3: Sz0,
+    sigma_theta: float,
+) -> Sz0:
+    # Log-likelihood of the curved part of the stream
+    lnlik_curved = compute_ln_lik_curved(len(kappa_hat), f1_logf1, f2_logf2, f3_logf3)
+
+    # Log-likelihood of the straight part of the stream
+    # If no part is straight then `acc_linear_align` is all zeros
+    acc_linear_align = jnp.where(
+        where_straight[:, None],
+        acc_xy_unit * kappa_hat,
+        jnp.zeros_like(kappa_hat),
+    )
+    # Angle between planar acceleration and stream track (Nibauer et al. 2023,
+    # Eq. 15). acc_linear_align = 0 => theta_T = 0
+    theta_T = jnp.pi / 2 - jnp.arccos(jnp.sum(acc_linear_align, axis=1))
+    # The likelihoods of the straight segment (Nibauer et al. 2023, Eq. 16)
+    ln_normal = -0.5 * (
+        log2pi + 2 * jnp.log(sigma_theta) + (theta_T - 0) ** 2 / sigma_theta**2
+    )
+    lnlik_straight = jnp.sum(ln_normal)  # sum to get the total likelihood
+
+    # Return the total log-likelihood
+    return lnlik_curved + lnlik_straight
+
+
+@partial(jax.jit)
+def compute_lnlik_bad(*_: Any) -> Sz0:
+    """Log-Likelihood when the majority of the curved segments are incompatible."""
+    return -jnp.inf
+
+
+@partial(jax.jit)
+def compute_ln_likelihood(
+    kappa_hat: SzGamma2,
+    acc_xy_unit: SzGamma2,
+    where_straight: Bool[Array, "gamma"] | None = None,
     *,
     sigma_theta: float = jnp.deg2rad(10.0),
-    debug: bool = False,
-) -> SzN:
+) -> Sz0:
     """Return the likelihood of the accelerations given the track's curvature.
 
     Calculates the likelihood based on the angles between the unit curvature
@@ -58,75 +103,49 @@ def compute_likelihood(
       The computed logarithm of the likelihood.
 
     """
+    # ---------------------------------------------------
+    # Compute the 'fractions' f1, f2, f3 (Eq. 18 of Nibauer et al. 2023)
 
-    # Number of evaluation points
-    N = len(kappa_hat)
-
-    # Determine which points are curved. If `where_straight` is not provided,
-    # assume all points are curved.
-    where_curved = (
-        jnp.ones(N, dtype=bool) if where_straight is None else ~where_straight
-    )
-    num_curved = jnp.sum(where_curved)  # Count the number of curved points
-
-    # TODO: figure out thresh_f0 and sigma_theta values.
-    # Compute the variance of the angle in radians from the given standard deviation in degrees
-    sigma_theta2 = sigma_theta**2
-    # f1: fraction of eval points with compatible curvature vectors and planar accelerations
-    acc_curv_align = jnp.where(
+    # - f1: fraction of eval points with compatible curvature vectors and planar
+    #   accelerations, where compatible means that theta -- the angle between
+    #   the unit curvature vector and the planar acceleration vector -- is less
+    #   than pi/2.
+    N = len(kappa_hat)  # Number of gamma points
+    where_curved = jnp.ones(N, bool) if where_straight is None else ~where_straight
+    acc_curv_align: SzGamma2 = jnp.where(
         where_curved[:, None], acc_xy_unit * kappa_hat, jnp.zeros_like(kappa_hat)
     )
     f1 = jnp.sum(jnp.abs(1 + jnp.sign(jnp.sum(acc_curv_align, axis=1))) / 2) / N
+
+    # - f2: fraction of eval points with incompatible curvature vectors and
+    #   planar accelerations.
+    num_curved = jnp.sum(where_curved)  # number of curved points
     f2 = (num_curved / N) - f1
-    f3 = 1 - f1 - f2
 
-    @partial(jax.jit)
-    def on_true() -> tuple[Sz0, SzN, Sz0, Sz0, Sz0]:
-        f1_logf1 = lax.select(jnp.isclose(f1, 0.0), jnp.array(0.0), f1 * jnp.log(f1))
-        f2_logf2 = lax.select(jnp.isclose(f2, 0.0), jnp.array(0.0), f2 * jnp.log(f2))
-        f3_logf3 = lax.select(jnp.isclose(f3, 0.0), jnp.array(0.0), f3 * jnp.log(f3))
+    # - f3: is the fraction of evaluation points with undefined curvature
+    #   vectors. This is fixed for each stream track and therefore doesn't
+    #   really matter since the likelihoods are ultimately divided by the
+    #   maximum likelihood, so this term will cancel out.
+    f3 = 1 - (f1 + f2)
 
-        if where_straight is not None:
-            acc_linear_align = jnp.where(
-                ~where_curved[:, None],
-                acc_xy_unit * kappa_hat,
-                jnp.zeros_like(kappa_hat),
-            )
-            # Depending on the convention, the result of theta_T may differ by a sign, but since the square of theta_T is used later in the calculation, this is not a significant issue.
-            theta_T = jnp.pi / 2 - jnp.arccos(jnp.sum(acc_linear_align, axis=1))
-            ln_normal = -0.5 * (
-                log2pi + jnp.log(sigma_theta2) + (theta_T - 0) ** 2 / sigma_theta2
-            )
-            ln_lik = N * (f1_logf1 + f2_logf2 + f3_logf3) + jnp.sum(ln_normal)
-        else:
-            # Not considering the tangent condition means directly discarding all zero-curvature points.
-            ln_normal = jnp.zeros(N, dtype=kappa_hat.dtype)
-            ln_lik = N * (f1_logf1 + f2_logf2 + 0.0)
+    # We actually need f * log(f).
+    f1_logf1 = lax.select(jnp.isclose(f1, 0.0), jnp.array(0.0), f1 * jnp.log(f1))
+    f2_logf2 = lax.select(jnp.isclose(f2, 0.0), jnp.array(0.0), f2 * jnp.log(f2))
+    f3_logf3 = lax.select(jnp.isclose(f3, 0.0), jnp.array(0.0), f3 * jnp.log(f3))
 
-        return ln_lik, ln_normal, f1_logf1, f2_logf2, f3_logf3
+    # ---------------------------------------------------
 
-    @partial(jax.jit)
-    def on_false() -> tuple[Sz0, SzN, Sz0, Sz0, Sz0]:
-        ln_lik = -jnp.inf
-        ln_normal = jnp.zeros(N, dtype=kappa_hat.dtype)
-        f1_logf1, f2_logf2, f3_logf3 = jnp.array([0.0, 0.0, 0.0])
-        return (ln_lik, ln_normal, f1_logf1, f2_logf2, f3_logf3)
-
-    # TODO: why this exact predicate?
-    pred = jnp.logical_and(f3 < 0.5, f1 > f2)
-    ln_lik, ln_normal, f1_logf1, f2_logf2, f3_logf3 = lax.cond(pred, on_true, on_false)
-
-    if debug:
-        jax.debug.print(
-            "f1: {f1:.4f}, f2: {f2:.4f}, f3: {f3:.4f}, ln_normal_sum: {sum_ln_normal:.2f}, ln_lik: {ln_lik:.2f}, f1logf1: {f1_logf1:.3E}, f2logf2: {f2_logf2:.3E}, f3logf3: {f3_logf3:.3E}",
-            f1=f1,
-            f2=f2,
-            f3=f3,
-            sum_ln_normal=jnp.sum(ln_normal),
-            ln_lik=ln_lik,
-            f1_logf1=f1_logf1,
-            f2_logf2=f2_logf2,
-            f3_logf3=f3_logf3,
-        )
+    # The likelihood is degenerate with the "f" parameters. To break the degeneracy we require f1 > f2 (Nibauer et al. 2023, Eq. 20).
+    mostly_good = f1 > f2
+    operands = (
+        kappa_hat,
+        acc_xy_unit,
+        ~where_curved,  # NOTE: the inversion
+        f1_logf1,
+        f2_logf2,
+        f3_logf3,
+        sigma_theta,
+    )
+    ln_lik = lax.cond(mostly_good, compute_lnlik_good, compute_lnlik_bad, *operands)
 
     return ln_lik

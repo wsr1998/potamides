@@ -11,7 +11,7 @@ __all__ = [
 ]
 
 from functools import partial
-from typing import Protocol, runtime_checkable
+from typing import Protocol, TypeAlias, runtime_checkable
 
 import interpax
 import jax
@@ -20,7 +20,10 @@ import optax
 import scipy.interpolate
 from jaxtyping import Array, Real
 
-from .custom_types import Sz0, SzData, SzData2, SzGamma, SzGamma2, SzN, SzN2
+from .custom_types import Sz0, SzData, SzData2, SzN, SzN2
+
+SzGamma: TypeAlias = Real[Array, "data-1"]
+SzGamma2: TypeAlias = Real[Array, "data-1 2"]
 
 
 def interpax_PPoly_from_scipy_UnivariateSpline(
