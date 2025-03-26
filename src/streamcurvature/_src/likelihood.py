@@ -1,6 +1,6 @@
 """Curvature analysis functions."""
 
-__all__ = ["compute_ln_lik_curved", "compute_ln_likelihood"]
+__all__ = ["combine_ln_likelihoods", "compute_ln_lik_curved", "compute_ln_likelihood"]
 
 from functools import partial
 from typing import Any
@@ -8,7 +8,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from jax import lax
-from jaxtyping import Array, Bool
+from jaxtyping import Array, Bool, Int, Real
 
 from .custom_types import Sz0, SzGamma2
 
@@ -35,6 +35,8 @@ def compute_lnlik_good(
 ) -> Sz0:
     # Log-likelihood of the curved part of the stream
     lnlik_curved = compute_ln_lik_curved(len(kappa_hat), f1_logf1, f2_logf2, f3_logf3)
+
+    # TODO: it is more efficient to lax cond on where_straight having any True.
 
     # Log-likelihood of the straight part of the stream
     # If no part is straight then `acc_linear_align` is all zeros
@@ -149,3 +151,41 @@ def compute_ln_likelihood(
     ln_lik = lax.cond(mostly_good, compute_lnlik_good, compute_lnlik_bad, *operands)
 
     return ln_lik
+
+
+@partial(jnp.vectorize, signature="(n),(n),(n)->()")
+def combine_ln_likelihoods(
+    lnliks: Real[Array, "S"],
+    /,
+    ngammas: Int[Array, "S"],
+    arclengths: Real[Array, "S"],
+) -> Sz0:
+    """Combine likelihoods from different stream segments.
+
+    Parameters
+    ----------
+    lnliks
+        The log-likelihoods of the stream segments.
+    ngammas
+        The number of gamma points in each segment.
+    arclengths
+        The total arclengths of the stream segments.
+
+    """
+    # Compute the mean measurement density of the stream segments. This is the
+    # ratio of the total number of gamma points to the total arclength.
+    mean_gamma_density = jnp.sum(ngammas) / jnp.sum(arclengths)
+
+    # Compute the weights for each segment. This is the ratio of the total
+    # measurement density to the measurement density of each segment. For
+    # streams with lower measurement density the likelihood is up-weighted and
+    # vice versa for streams with higher measurement density.
+    gamma_densities = ngammas / arclengths
+    weights = mean_gamma_density / gamma_densities
+
+    # Compute the weighted log-likelihoods
+    lnliks_weighted = weights * lnliks
+    # TODO: does this need to be normalized by the sum of the weights?
+
+    # Return the total log-likelihood
+    return jnp.sum(lnliks_weighted)
