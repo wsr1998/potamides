@@ -664,16 +664,16 @@ wheels = [
 
 [[package]]
 name = "interpax"
-version = "0.3.6"
+version = "0.3.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "equinox" },
     { name = "jax" },
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/02/5e/1058a359b6d826d18fa242a6c7e5d3ccf60511263a58e4b0978548bf83cf/interpax-0.3.6.tar.gz", hash = "sha256:db8d12b9d13d9c2f0788375bc035e4f6f3c0b2b5e70d0e699a272b4c0b0757e8", size = 55651 }
+sdist = { url = "https://files.pythonhosted.org/packages/0b/2f/e1eb677394a156d08cf868a209869f806f40793a43705c966ecdf5baf311/interpax-0.3.7.tar.gz", hash = "sha256:fb5eeaa3212579a6e7c3eb2056d2b20c101ab917b39f110cd66dc7efbee86c10", size = 56097 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/55/fd/7febe0df137c7bbcd2aee30447ea8c666400c736ca0dca3e353b5380ee33/interpax-0.3.6-py3-none-any.whl", hash = "sha256:14466166c77d4db289c84ebcfaa4e84e3668857b013ed34829be445967db3d55", size = 25961 },
+    { url = "https://files.pythonhosted.org/packages/ea/f1/a8c60b138f0935cbf652ccdde5d8473adefc5c7bd0ab5c8858c95e84bf4b/interpax-0.3.7-py3-none-any.whl", hash = "sha256:b47a833b82dfb69c5b1311627035e0a16d79880d3139960c9223f08dd4b1e35d", size = 26010 },
 ]
 
 [[package]]
@@ -1943,6 +1943,7 @@ source = { editable = "." }
 dependencies = [
     { name = "astropy" },
     { name = "galax" },
+    { name = "interpax" },
     { name = "jax" },
     { name = "jaxopt" },
     { name = "jaxtyping" },
@@ -1979,6 +1980,7 @@ test = [
 requires-dist = [
     { name = "astropy", specifier = ">=6.1.7" },
     { name = "galax", git = "https://github.com/GalacticDynamics/galax.git" },
+    { name = "interpax", specifier = ">=0.3.7" },
     { name = "jax", specifier = "<0.4.36" },
     { name = "jaxopt", specifier = ">=0.8.3" },
     { name = "jaxtyping", specifier = ">=0.2.38" },
