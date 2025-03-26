@@ -299,6 +299,25 @@ class AbstractTrack:
     # =====================================================
     # Plotting methods
 
+    def plot_track(
+        self,
+        gamma: SzN,
+        /,
+        *,
+        ax: plt.Axes | None = None,
+        label: str | None = r"[$x,y$]($\gamma$)",
+    ) -> plt.Axes:
+        """Plot the track itself."""
+        if ax is None:
+            _, ax = plt.subplots(dpi=150, figsize=(10, 10))
+
+        # Plot track itself
+        ax.plot(*self(gamma).T, c="red", ls="-", label=label)
+        # Add the knot points
+        ax.scatter(*self.knots.T, s=10, c="red", zorder=10)
+
+        return ax
+
     def plot_tangents(
         self,
         gamma: SzN,
@@ -408,14 +427,11 @@ class AbstractTrack:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
         # Plot track itself
-        ax.plot(
-            *self(jnp.linspace(gamma.min(), gamma.max(), len(gamma) * 10)).T,
-            c="red",
-            ls="-",
+        self.plot_track(
+            jnp.linspace(gamma.min(), gamma.max(), len(gamma) * 10),
+            ax=ax,
             label=r"[$x,y$]($\gamma$)" if labels else None,
         )
-        # Add the knot points
-        ax.scatter(*self.knots.T, s=10, c="red", zorder=10)
 
         # Geometry along the track
         self.plot_tangents(
