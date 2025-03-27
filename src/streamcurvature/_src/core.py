@@ -473,6 +473,8 @@ class AbstractTrack:
 class Track(AbstractTrack):
     """A track with data and a spline."""
 
+    #: [x,y](gamma) spline. It must be twice-differentiable (cubic2) to compute
+    #: curvature vectors.
     ridge_line: interpax.Interpolator1D
 
     def __init__(
@@ -499,14 +501,14 @@ class Track(AbstractTrack):
         self.__post_init__()
 
     @classmethod
-    def from_spline(cls: "type[Track]", spline: interpax.Interpolator1D) -> "Track":
+    def from_spline(cls: "type[Track]", spline: interpax.Interpolator1D, /) -> "Track":
         """Create a Track from an existing spline."""
         # TODO: set directly without deconstructing
         if spline.method != "cubic2":
             msg = f"Spline must be cubic2, got {spline.method}."
             raise ValueError(msg)
 
-        return cls(spline.x, spline.f)
+        return cls(ridge_line=spline)
 
 
 # ============================================================================
