@@ -7,7 +7,7 @@ __all__ = [
 
 import functools as ft
 from dataclasses import dataclass
-from typing import final
+from typing import Literal, final
 
 import equinox as eqx
 import galax.potential as gp
@@ -16,6 +16,7 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import matplotlib.pyplot as plt
+from jax.experimental.ode import odeint
 from jaxtyping import Array, Real
 
 from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN
@@ -218,25 +219,93 @@ class AbstractTrack:
         tangents = self.tangent(gamma_eval, forward=forward)
         return tangents / jnp.linalg.vector_norm(tangents)
 
+    @ft.partial(jax.jit, static_argnames=("forward",))
+    @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
+    def state_speed(self, gamma: Sz0, /, *, forward: bool = True) -> Sz0:
+        """Return the speed in gamma of the track at a given position.
+
+        This is the norm of the tangent vector at the given position.
+
+        $$
+            \mathbf{v}(\gamma) = \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\|
+        $$
+
+        """
+        return jnp.linalg.norm(self.tangent(gamma, forward=forward))
+
     # -------------------------------------------
     # Arc-length
 
-    @ft.partial(jax.jit)
-    def arc_length(self, gamma0: LikeSz0 = -1, gamma1: LikeSz0 = 1) -> Sz0:
+    @ft.partial(jax.jit, inline=True, static_argnames=("num"))
+    def _arc_length_p2p(
+        self, gamma0: LikeSz0 = -1, gamma1: LikeSz0 = 1, *, num: int = 100_000
+    ) -> Sz0:
+        gammas = jnp.linspace(gamma0, gamma1, num, dtype=float)
+        x = self.ridge_line(gammas)
+        d_p2p = point_to_point_distance(x)
+        return jnp.sum(d_p2p)
+
+    @ft.partial(jax.jit, inline=True, static_argnames=("num"))
+    def _arc_length_quadtrature(
+        self, gamma0: LikeSz0 = -1, gamma1: LikeSz0 = 1, *, num: int = 100_000
+    ) -> Sz0:
+        """Compute the arc-length using fixed quadrature."""
+        gammas = jnp.linspace(gamma0, gamma1, num, dtype=float)
+        speeds = jax.vmap(self.state_speed)(gammas)
+        dgamma = (gamma1 - gamma0) / (num - 1)
+        return jnp.sum(speeds) * dgamma
+
+    @ft.partial(jax.jit, inline=True)
+    def _arc_length_odeint(self, gamma0: LikeSz0 = -1, gamma1: LikeSz0 = 1) -> Sz0:
+        """Compute the arc-length using ODE integration."""
+
+        @ft.partial(jax.jit)
+        def ds_dgamma(_: Sz0, gamma: Sz0) -> Sz0:
+            return self.state_speed(gamma)
+
+        # Set integration endpoints.
+        t = jnp.array([gamma0, gamma1], dtype=float)
+        s0 = 0.0  # initial arc length
+
+        # Use odeint to integrate the ODE.
+        s = odeint(ds_dgamma, s0, t)
+        arc_length = s[-1]
+        return arc_length
+
+    @ft.partial(jax.jit, static_argnames=("method"))
+    def arc_length(
+        self,
+        gamma0: LikeSz0 = -1,
+        gamma1: LikeSz0 = 1,
+        *,
+        method: Literal["p2p", "quad", "ode"] = "quad",
+    ) -> Sz0:
         """Return the arc-length of the track.
 
         $$
             s(\gamma_0, \gamma_1) = \int_{\gamma_0}^{\gamma_1} \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
         $$
 
+        Parameters
+        ----------
+        gamma0, gamma1
+            The starting / ending gamma value between which to compute the
+            arc-length. The default is [-1, 1], which is the full range of
+            gamma for the track.
+
+        method
+            The method to use for computing the arc-length. Options are
+            "p2p", "quad", or "ode". The default is "quad".
+
         """
-        # TODO: more options for computing the arc length.
-        #  1. With quadrature
-        #  2. With ODEint
-        gamma = jnp.linspace(gamma0, gamma1, int(1e5), dtype=float)
-        x = self.ridge_line(gamma)
-        d_p2p = point_to_point_distance(x)
-        return jnp.sum(d_p2p)
+        methods = ("p2p", "quad", "ode")
+        branches = [
+            self._arc_length_p2p,
+            self._arc_length_quadtrature,
+            self._arc_length_odeint,
+        ]
+        operands = (gamma0, gamma1)
+        return jax.lax.switch(methods.index(method), branches, *operands)
 
     @property
     def total_arc_length(self) -> Sz0:
