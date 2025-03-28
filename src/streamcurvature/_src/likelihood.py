@@ -2,7 +2,7 @@
 
 __all__ = ["combine_ln_likelihoods", "compute_ln_lik_curved", "compute_ln_likelihood"]
 
-from functools import partial
+import functools as ft
 from typing import Any
 
 import jax
@@ -15,7 +15,7 @@ from .custom_types import Sz0, SzGamma2
 log2pi = jnp.log(2 * jnp.pi)
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def compute_ln_lik_curved(
     ngamma: Sz0, f1_logf1: Sz0, f2_logf2: Sz0, f3_logf3: Sz0
 ) -> Sz0:
@@ -23,7 +23,7 @@ def compute_ln_lik_curved(
     return ngamma * (f1_logf1 + f2_logf2 + f3_logf3)
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def compute_lnlik_good(
     kappa_hat: SzGamma2,
     acc_xy_unit: SzGamma2,
@@ -58,13 +58,13 @@ def compute_lnlik_good(
     return lnlik_curved + lnlik_straight
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def compute_lnlik_bad(*_: Any) -> Sz0:
     """Log-Likelihood when the majority of the curved segments are incompatible."""
     return -jnp.inf
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def compute_ln_likelihood(
     kappa_hat: SzGamma2,
     acc_xy_unit: SzGamma2,
@@ -153,7 +153,7 @@ def compute_ln_likelihood(
     return ln_lik
 
 
-@partial(jnp.vectorize, signature="(n),(n),(n)->()")
+@ft.partial(jnp.vectorize, signature="(n),(n),(n)->()")
 def combine_ln_likelihoods(
     lnliks: Real[Array, "S"],
     /,

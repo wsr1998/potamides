@@ -7,7 +7,7 @@ __all__ = [
 ]
 
 
-from functools import partial
+import functools as ft
 
 import galax.potential as gp
 import jax
@@ -22,7 +22,7 @@ from .custom_types import SzN, SzN2
 PI_ON_2 = np.pi / 2
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def get_angles(acc_xy_unit: SzN2, kappa_hat: SzN2) -> SzN:
     r"""Return angle between the normal and acceleration vectors at a position.
 

@@ -5,8 +5,8 @@ __all__ = [
     "Track",
 ]
 
+import functools as ft
 from dataclasses import dataclass
-from functools import partial
 from typing import final
 
 import equinox as eqx
@@ -18,7 +18,7 @@ import jax.tree_util as jtu
 import matplotlib.pyplot as plt
 from jaxtyping import Array, Real
 
-from .custom_types import Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2
+from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN
 from .splinelib import point_to_point_distance
 
 log2pi = jnp.log(2 * jnp.pi)
@@ -65,19 +65,13 @@ class AbstractTrack:
 
     @property
     def knots(self) -> Real[Array, "N F"]:
-        """Return the points along the track."""
+        """Return the knot points along the track."""
         return self.ridge_line.f
 
-    @property
-    def total_arc_length(self) -> Sz0:
-        """Return the total arc-length of the track."""
-        # TODO: more robust way to compute the total arc-length
-        gamma = jnp.linspace(self.gamma.min(), self.gamma.max(), int(1e5))
-        x = self.ridge_line(gamma)
-        d_p2p = point_to_point_distance(x)
-        return jnp.sum(d_p2p)
-
     # =====================================================
+
+    # -------------------------------------------
+    # Positions
 
     def __call__(self, gamma: SzN) -> Real[Array, "N F"]:
         """Return the position at a given gamma.
@@ -110,9 +104,12 @@ class AbstractTrack:
         """Compute the position at a given gamma. See `__call__` for details."""
         return self(gamma)
 
-    @partial(jax.jit)
-    @partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
-    def tangent(self, gamma_eval: Sz0, /, *, forward: bool = True) -> SzN2:
+    # -------------------------------------------
+    # Tangents
+
+    @ft.partial(jax.jit)
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    def tangent(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Compute the tangent vector at a given position along the stream.
 
         The tangent vector is defined as:
@@ -129,7 +126,7 @@ class AbstractTrack:
 
         Parameters
         ----------
-        gamma_eval
+        gamma
             The scalar gamma value at which to evaluate the spline.
             This is for `jax.vmap` compatibility.
         spline
@@ -166,10 +163,10 @@ class AbstractTrack:
         """
         jac_fn = jax.jacfwd if forward else jax.jacrev
         tangent_fn = jac_fn(self.ridge_line)
-        return tangent_fn(gamma_eval)
+        return tangent_fn(gamma)
 
-    @partial(jax.jit)
-    @partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    @ft.partial(jax.jit)
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def unit_tangent(self, gamma_eval: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Compute the unit tangent vector at a given position along the stream.
 
@@ -221,8 +218,42 @@ class AbstractTrack:
         tangents = self.tangent(gamma_eval, forward=forward)
         return tangents / jnp.linalg.vector_norm(tangents)
 
-    @partial(jax.jit)
-    @partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    # -------------------------------------------
+    # Arc-length
+
+    @ft.partial(jax.jit)
+    def arc_length(self, gamma0: LikeSz0 = -1, gamma1: LikeSz0 = 1) -> Sz0:
+        """Return the arc-length of the track.
+
+        $$
+            s(\gamma_0, \gamma_1) = \int_{\gamma_0}^{\gamma_1} \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
+        $$
+
+        """
+        # TODO: more options for computing the arc length.
+        #  1. With quadrature
+        #  2. With ODEint
+        gamma = jnp.linspace(gamma0, gamma1, int(1e5), dtype=float)
+        x = self.ridge_line(gamma)
+        d_p2p = point_to_point_distance(x)
+        return jnp.sum(d_p2p)
+
+    @property
+    def total_arc_length(self) -> Sz0:
+        """Return the total arc-length of the track.
+
+        $$
+            L = s(-1, 1) = \int_{-1}^{1} \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
+        $$
+
+        """
+        return self.arc_length(gamma0=-1, gamma1=1)
+
+    # -------------------------------------------
+    # Arc-length
+
+    @ft.partial(jax.jit)
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def dThat_dgamma(self, gamma_eval: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Return the gamma derivative of the unit tangent vector.
 
@@ -268,8 +299,8 @@ class AbstractTrack:
         dThat_dgamma_fn = jac_fn(self.unit_tangent)
         return dThat_dgamma_fn(gamma_eval, forward=forward)
 
-    @partial(jax.jit)
-    @partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    @ft.partial(jax.jit)
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def unit_curvature(self, gamma_eval: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Return the unit curvature vector.
 
@@ -468,7 +499,7 @@ class AbstractTrack:
 
 
 @final
-@partial(jtu.register_dataclass, data_fields=["ridge_line"], meta_fields=[])
+@ft.partial(jtu.register_dataclass, data_fields=["ridge_line"], meta_fields=[])
 @dataclass(frozen=True, slots=True)
 class Track(AbstractTrack):
     """A track with data and a spline."""
@@ -514,8 +545,9 @@ class Track(AbstractTrack):
 # ============================================================================
 
 
-@partial(jax.jit)
-@partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+# TODO: move this into AbstractTrack
+@ft.partial(jax.jit)
+@ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
 def compute_darclength_dgamma(
     track: Track, gamma_eval: Sz0, /, *, forward: bool = True
 ) -> Sz0:

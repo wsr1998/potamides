@@ -16,8 +16,8 @@ __all__ = [  # noqa: RUF022
     "interpax_PPoly_from_scipy_UnivariateSpline",
 ]
 
+import functools as ft
 from collections.abc import Callable
-from functools import partial
 from typing import Any, Protocol, TypeAlias, runtime_checkable
 
 import interpax
@@ -206,7 +206,7 @@ class ReduceFn(Protocol):
     def __call__(self, arr: Real[Array, "chunk"], /, axis: int) -> Sz0: ...
 
 
-@partial(jax.jit, static_argnames=("num_splits", "reduce_fn"))
+@ft.partial(jax.jit, static_argnames=("num_splits", "reduce_fn"))
 def reduce_point_density(
     gamma: SzN,
     data: SzN2,
@@ -273,7 +273,7 @@ def reduce_point_density(
 # ---------------------------------------------------------
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def data_distance_cost_fn(
     knots_y: SzN2,
     knots_gamma: SzN,
@@ -304,7 +304,7 @@ def data_distance_cost_fn(
 # -------------------------------------
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def curvature_cost_fn(
     params: SzN2,
     gamma_knots: SzN,
@@ -324,7 +324,7 @@ def curvature_cost_fn(
 # -------------------------------------
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def _no_curvature_cost_fn(
     params: SzN2,  # noqa: ARG001
     gamma_knots: SzN,  # noqa: ARG001
@@ -335,7 +335,7 @@ def _no_curvature_cost_fn(
     return jnp.zeros(())
 
 
-@partial(jax.jit, static_argnames=("penalize_concavity_changes",))
+@ft.partial(jax.jit, static_argnames=("penalize_concavity_changes",))
 def default_cost_fn(
     params: SzN2,
     gamma_knots: SzN,
@@ -387,7 +387,7 @@ DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
 StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
 
 
-@partial(jax.jit, static_argnums=(0,), static_argnames=("optimizer", "nsteps"))
+@ft.partial(jax.jit, static_argnums=(0,), static_argnames=("optimizer", "nsteps"))
 def optimize_spline_knots(
     cost_fn: Callable[..., Sz0],  # TODO: full type hint
     /,
@@ -438,7 +438,7 @@ def optimize_spline_knots(
 
     """
 
-    @partial(jax.jit)
+    @ft.partial(jax.jit)
     def loss_fn(params: SzN2) -> Sz0:
         return cost_fn(params, gamma_knots, data_gamma, data_target, sigmas=sigmas)
 
@@ -446,7 +446,7 @@ def optimize_spline_knots(
     opt_state = optimizer.init(init_params)
 
     # Define a single optimization step.
-    @partial(jax.jit)
+    @ft.partial(jax.jit)
     def step_fn(state: StepState, _: Any) -> tuple[StepState, Sz0]:
         """Perform a single optimization step."""
         params, opt_state = state
