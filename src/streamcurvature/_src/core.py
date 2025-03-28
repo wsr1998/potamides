@@ -107,7 +107,7 @@ class AbstractTrack:
     # -------------------------------------------
     # Tangents
 
-    @ft.partial(jax.jit)
+    @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def tangent(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Compute the tangent vector at a given position along the stream.
@@ -165,7 +165,7 @@ class AbstractTrack:
         tangent_fn = jac_fn(self.ridge_line)
         return tangent_fn(gamma)
 
-    @ft.partial(jax.jit)
+    @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def unit_tangent(self, gamma_eval: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Compute the unit tangent vector at a given position along the stream.
@@ -250,9 +250,9 @@ class AbstractTrack:
         return self.arc_length(gamma0=-1, gamma1=1)
 
     # -------------------------------------------
-    # Arc-length
+    # Curvature
 
-    @ft.partial(jax.jit)
+    @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def dThat_dgamma(self, gamma_eval: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Return the gamma derivative of the unit tangent vector.
@@ -299,7 +299,7 @@ class AbstractTrack:
         dThat_dgamma_fn = jac_fn(self.unit_tangent)
         return dThat_dgamma_fn(gamma_eval, forward=forward)
 
-    @ft.partial(jax.jit)
+    @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def unit_curvature(self, gamma_eval: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Return the unit curvature vector.
