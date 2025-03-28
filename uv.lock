@@ -790,21 +790,6 @@ wheels = [
 ]
 
 [[package]]
-name = "jaxopt"
-version = "0.8.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "jax" },
-    { name = "jaxlib" },
-    { name = "numpy" },
-    { name = "scipy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f9/af/73f7514ea14d6aba0a851e03afbdd532a7af896577c708c6ce405917ce80/jaxopt-0.8.3.tar.gz", hash = "sha256:4b06dfa6f915a4f3291699606245af6069371a48dc5c92d4c507840d62990646", size = 121236 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/a4/fc292a90a9c51d1b633cdffe2df30c702e1e0b3e0b568c7b81004cac0a06/jaxopt-0.8.3-py3-none-any.whl", hash = "sha256:4be2f82798393682529c9ca5046e5397ac6c8657b8acb6bf275e773b28df15b6", size = 172264 },
-]
-
-[[package]]
 name = "jaxtyping"
 version = "0.2.38"
 source = { registry = "https://pypi.org/simple" }
@@ -1945,7 +1930,6 @@ dependencies = [
     { name = "galax" },
     { name = "interpax" },
     { name = "jax" },
-    { name = "jaxopt" },
     { name = "jaxtyping" },
     { name = "matplotlib" },
     { name = "numpy" },
@@ -1982,7 +1966,6 @@ requires-dist = [
     { name = "galax", git = "https://github.com/GalacticDynamics/galax.git" },
     { name = "interpax", specifier = ">=0.3.7" },
     { name = "jax", specifier = "<0.4.36" },
-    { name = "jaxopt", specifier = ">=0.8.3" },
     { name = "jaxtyping", specifier = ">=0.2.38" },
     { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "numpy", specifier = ">=2.2.3" },

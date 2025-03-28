@@ -1,17 +1,24 @@
 """Spline-related tools."""
 
-__all__ = [
-    "interpax_PPoly_from_scipy_UnivariateSpline",
+__all__ = [  # noqa: RUF022
+    # Processing data
     "make_gamma_from_data",
     "make_increasing_gamma_from_data",
-    "optimize_spline_knots",
     "point_to_point_arclenth",
     "point_to_point_distance",
+    # Optimizing splines
     "reduce_point_density",
+    "data_distance_cost_fn",
+    "curvature_cost_fn",
+    "default_cost_fn",
+    "optimize_spline_knots",
+    # Utils
+    "interpax_PPoly_from_scipy_UnivariateSpline",
 ]
 
+from collections.abc import Callable
 from functools import partial
-from typing import Protocol, TypeAlias, runtime_checkable
+from typing import Any, Protocol, TypeAlias, runtime_checkable
 
 import interpax
 import jax
@@ -77,7 +84,7 @@ def point_to_point_arclenth(data: SzData2, /) -> SzGamma:
     return jnp.cumsum(point_to_point_distance(data))
 
 
-def make_gamma_from_data(data: SzData2) -> SzGamma:
+def make_gamma_from_data(data: SzData2, /) -> SzGamma:
     r"""Return $\gamma$, the normalized arc-length of the data.
 
     $$ \gamma = 2\frac{s}{L} - 1 , \in [-1, 1] $$
@@ -127,7 +134,7 @@ def _find_plateau_mask(arr: SzN, /) -> SzN:
     return mask
 
 
-def make_increasing_gamma_from_data(data: SzData2) -> tuple[SzGamma, SzGamma2]:
+def make_increasing_gamma_from_data(data: SzData2, /) -> tuple[SzGamma, SzGamma2]:
     r"""Return the trimmed data and gamma, the normalized arc-length.
 
     $$ \gamma = 2\frac{s}{L} - 1 , \in [-1, 1] $$
@@ -201,8 +208,8 @@ class ReduceFn(Protocol):
 
 @partial(jax.jit, static_argnames=("num_splits", "reduce_fn"))
 def reduce_point_density(
-    gamma: SzGamma,
-    data: SzGamma2,
+    gamma: SzN,
+    data: SzN2,
     *,
     num_splits: int,
     reduce_fn: ReduceFn = jnp.median,
@@ -217,6 +224,20 @@ def reduce_point_density(
     that represents the curve then it necessarily forces a greater degree of
     smoothness. Combining this with `optimize_spline_knots` can produce a spline
     curve that better represents the smooth stream track.
+
+    Parameters
+    ----------
+    gamma
+        The gamma values at which the spline is anchored.
+    data
+        The data points of the spline.
+
+    num_splits
+        The number of splits to make in the data. The spline will be reduced to
+        `num_splits + 2` points.
+    reduce_fn
+        The function to use to reduce the data within each chunk to a single
+        point. Defaults to `jnp.median`.
 
     Examples
     --------
@@ -253,13 +274,43 @@ def reduce_point_density(
 
 
 @partial(jax.jit)
-def _no_curvature_cost_fn(params: SzN2, gamma_knots: SzN, data_gamma: SzData) -> Sz0:  # noqa: ARG001
-    """Return 0.0."""
-    return jnp.zeros(())
+def data_distance_cost_fn(
+    knots_y: SzN2,
+    knots_gamma: SzN,
+    data_gamma: SzData,
+    data_y: SzData,
+    *,
+    sigmas: SzN | float = 1.0,
+) -> Sz0:
+    """Cost function to minimize that compares data to spline fit.
+
+    $$ \text{cost} = \sum_i \left( \frac{y_i - f(\gamma_i)}{\sigma_i} \right)^2 $$
+
+    where $$y_i$ is the target data, $f(\gamma_i)$ is the spline evaluated at
+    $\gamma_i$, and $\sigma_i$ is the uncertainty on $y_i$.
+
+    Parameters
+    ----------
+    knots_y
+
+
+    """
+    # Compute the cost of the distance from the spline from the data
+    spl = interpax.Interpolator1D(knots_gamma, knots_y, method="cubic2")
+    data_cost = jnp.sum(((data_y - spl(data_gamma)) / sigmas) ** 2)
+    return data_cost
+
+
+# -------------------------------------
 
 
 @partial(jax.jit)
-def _curvature_cost_fn(params: SzN2, gamma_knots: SzN, data_gamma: SzData) -> Sz0:
+def curvature_cost_fn(
+    params: SzN2,
+    gamma_knots: SzN,
+    data_gamma: SzData,
+    data_target: SzData,  # noqa: ARG001
+) -> Sz0:
     """Cost function to penalize changes in curvature."""
     spline = interpax.Interpolator1D(gamma_knots, params, method="cubic2")
     d2x_d2gamma = jax.vmap(jax.jacfwd(jax.jacfwd(spline)))(data_gamma)
@@ -270,15 +321,29 @@ def _curvature_cost_fn(params: SzN2, gamma_knots: SzN, data_gamma: SzData) -> Sz
     return sign_flip_cost
 
 
+# -------------------------------------
+
+
+@partial(jax.jit)
+def _no_curvature_cost_fn(
+    params: SzN2,  # noqa: ARG001
+    gamma_knots: SzN,  # noqa: ARG001
+    data_gamma: SzData,  # noqa: ARG001
+    data_target: SzData,  # noqa: ARG001
+) -> Sz0:
+    """Return 0.0."""
+    return jnp.zeros(())
+
+
 @partial(jax.jit, static_argnames=("penalize_concavity_changes",))
-def cost(
+def default_cost_fn(
     params: SzN2,
     gamma_knots: SzN,
     data_gamma: SzData,
     data_target: SzData,
-    sigmas: float = 1.0,
     *,
-    penalize_concavity_changes: bool = False,  # TODO: enable in optimize_spline_knots
+    sigmas: float = 1.0,
+    penalize_concavity_changes: bool = False,
 ) -> Sz0:
     """Cost function to minimize that compares data to spline fit.
 
@@ -300,31 +365,41 @@ def cost(
         The uncertainty on each datum in `data_target`.
 
     """
-    # Compute the cost of the distance from the spline from the data
-    spl = interpax.Interpolator1D(gamma_knots, params, method="cubic2")
-    data_cost = jnp.sum(((data_target - spl(data_gamma)) / sigmas) ** 2)
+    data_cost = data_distance_cost_fn(
+        params, gamma_knots, data_gamma, data_target, sigmas=sigmas
+    )
 
     # Optionally add a penalization for changes in concavity
     curvature_cost = jax.lax.cond(
         penalize_concavity_changes,
-        _curvature_cost_fn,
+        curvature_cost_fn,
         _no_curvature_cost_fn,
         params,
         gamma_knots,
         data_gamma,
+        data_target,
     )
 
     return data_cost + curvature_cost
 
 
-@partial(jax.jit)
+DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
+StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
+
+
+@partial(jax.jit, static_argnums=(0,), static_argnames=("optimizer", "nsteps"))
 def optimize_spline_knots(
+    cost_fn: Callable[..., Sz0],  # TODO: full type hint
+    /,
     init_params: SzN2,
     gamma_knots: SzN,
     data_gamma: SzData,
     data_target: SzData2,
+    *,
     sigmas: float = 1.0,
-) -> SzN:
+    optimizer: optax.GradientTransformation = DEFAULT_OPTIMIZER,
+    nsteps: int = 10_000,
+) -> SzN2:
     """Optimize spline knots to fit data.
 
     .. warning::
@@ -342,27 +417,46 @@ def optimize_spline_knots(
 
     Parameters
     ----------
-    init_params:
-        starting outputs of splines at gamma_knots
-    gamma_knots: anchor points for spline
-        median gamma in chunk
-    data_phi: gamma data
-        gamma of every point in data
-    data_target: output data
-        x,y of every point
-    sigmas: uncertainty on each datum
+    cost_fn
+        The cost function.
+    init_params
+        starting outputs of splines at gamma_knots.
+    gamma_knots
+        anchor points for spline. median gamma in chunk.
+
+    data_gamma
+        gamma of every point in data.
+    data_target
+        x,y of every data point
+    sigmas
+        uncertainty on each datum.
+
+    optimizer
+        The optimizer to use. Defaults to Adam with a learning rate of 1e-3.
+    nsteps
+        The number of optimization steps to take. Defaults to 10_000.
 
     """
-    from jaxopt import OptaxSolver
 
-    opt = optax.adam(learning_rate=1e-3)  # TODO: try a better optimizer
-    solver = OptaxSolver(opt=opt, fun=cost, maxiter=100_000)
+    @partial(jax.jit)
+    def loss_fn(params: SzN2) -> Sz0:
+        return cost_fn(params, gamma_knots, data_gamma, data_target, sigmas=sigmas)
 
-    res = solver.run(
-        init_params,
-        gamma_knots=gamma_knots,
-        data_gamma=data_gamma,
-        data_target=data_target,
-        sigmas=sigmas,
+    # Choose an optimizer: Adam or SGD.
+    opt_state = optimizer.init(init_params)
+
+    # Define a single optimization step.
+    @partial(jax.jit)
+    def step_fn(state: StepState, _: Any) -> tuple[StepState, Sz0]:
+        """Perform a single optimization step."""
+        params, opt_state = state
+        loss, grads = jax.value_and_grad(loss_fn)(params)
+        updates, opt_state = optimizer.update(grads, opt_state, params)
+        params = optax.apply_updates(params, updates)
+        return (params, opt_state), loss
+
+    # Run the optimization using jax.lax.scan.
+    (final_params, _), _ = jax.lax.scan(
+        step_fn, (init_params, opt_state), None, length=nsteps
     )
-    return res.params
+    return final_params

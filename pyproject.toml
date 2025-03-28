@@ -29,7 +29,6 @@ dependencies = [
     "galax",
     "interpax>=0.3.7",
     "jax<0.4.36",
-    "jaxopt>=0.8.3",
     "jaxtyping>=0.2.38",
     "matplotlib>=3.10.1",
     "numpy>=2.2.3",

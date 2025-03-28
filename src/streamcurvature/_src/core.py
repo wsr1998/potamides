@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from jaxtyping import Array, Real
 
 from .custom_types import Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2
-from .spline_tools import point_to_point_distance
+from .splinelib import point_to_point_distance
 
 log2pi = jnp.log(2 * jnp.pi)
 

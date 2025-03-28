@@ -14,11 +14,11 @@ __all__ = [
     "compute_ln_likelihood",
     "get_angles",
     "plot",
-    "spline_tools",
+    "splinelib",
 ]
 
 
-from . import spline_tools
+from . import splinelib
 from ._src import plot
 from ._src.accelerations import compute_accelerations
 from ._src.core import AbstractTrack, Track, compute_darclength_dgamma
