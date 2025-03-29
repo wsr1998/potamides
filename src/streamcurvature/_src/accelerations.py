@@ -44,6 +44,7 @@ def total_rotation(theta_z: Sz0, theta_x: Sz0) -> Real[Array, "3 3"]:
 @ft.partial(jax.jit, static_argnames=("withdisk",))
 def compute_accelerations(
     pos: QorVSzN3,  # [kpc]
+    /,
     rot_z: LikeQorVSz0 = 0.0,
     rot_x: LikeQorVSz0 = 0.0,
     q1: LikeSz0 = 1.0,
