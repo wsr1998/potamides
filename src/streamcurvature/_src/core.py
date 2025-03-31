@@ -557,7 +557,7 @@ class AbstractTrack:
         /,
         *,
         ax: plt.Axes | None = None,
-        label: str | None = r"[$x,y$]($\gamma$)",
+        label: str | None = r"$\vec{x}$($\gamma$)",
     ) -> plt.Axes:
         """Plot the track itself."""
         if ax is None:
@@ -683,7 +683,7 @@ class AbstractTrack:
         self.plot_track(
             jnp.linspace(gamma.min(), gamma.max(), len(gamma) * 10),
             ax=ax,
-            label=r"[$x,y$]($\gamma$)" if labels else None,
+            label=r"$\vec{x}$($\gamma$)" if labels else None,
         )
 
         # Geometry along the track
