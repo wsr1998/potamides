@@ -1,4 +1,4 @@
-"""Fit smooth spline."""
+"""Spline-related tools."""
 
 __all__ = [  # noqa: RUF022
     # Processing data
@@ -25,31 +25,35 @@ __all__ = [  # noqa: RUF022
     "default_cost_fn",
     "optimize_spline_knots",
     "new_gamma_knots_from_spline",
-    # Utils
+    # Compatibility
     "interpax_PPoly_from_scipy_UnivariateSpline",
 ]
 
-from ._src.splinelib import (
+from .compat import interpax_PPoly_from_scipy_UnivariateSpline
+from .data import (
+    make_gamma_from_data,
+    make_increasing_gamma_from_data,
+    point_to_point_arclenth,
+    point_to_point_distance,
+)
+from .funcs import (
     arc_length,
     arc_length_odeint,
     arc_length_p2p,
     arc_length_quadtrature,
     curvature,
-    curvature_cost_fn,
-    data_distance_cost_fn,
-    default_cost_fn,
     dThat_dgamma,
-    interpax_PPoly_from_scipy_UnivariateSpline,
-    make_gamma_from_data,
-    make_increasing_gamma_from_data,
-    new_gamma_knots_from_spline,
-    optimize_spline_knots,
-    point_to_point_arclenth,
-    point_to_point_distance,
     position,
-    reduce_point_density,
     speed,
     tangent,
     unit_curvature,
     unit_tangent,
+)
+from .opt import (
+    curvature_cost_fn,
+    data_distance_cost_fn,
+    default_cost_fn,
+    new_gamma_knots_from_spline,
+    optimize_spline_knots,
+    reduce_point_density,
 )

@@ -1,194 +1,28 @@
 """Spline-related tools."""
 
 __all__ = [  # noqa: RUF022
-    # Processing data
-    "make_gamma_from_data",
-    "make_increasing_gamma_from_data",
-    "point_to_point_arclenth",
-    "point_to_point_distance",
-    # Optimizing splines
     "reduce_point_density",
     "data_distance_cost_fn",
     "curvature_cost_fn",
     "default_cost_fn",
     "optimize_spline_knots",
-    # Utils
-    "interpax_PPoly_from_scipy_UnivariateSpline",
+    "new_gamma_knots_from_spline",
 ]
 
 import functools as ft
 from collections.abc import Callable
 from typing import Any, Protocol, TypeAlias, runtime_checkable
 
+import equinox as eqx
 import interpax
 import jax
 import jax.numpy as jnp
 import optax
-import scipy.interpolate
 from jaxtyping import Array, Real
 
-from .custom_types import Sz0, SzData, SzData2, SzN, SzN2
+from streamcurvature._src.custom_types import Sz0, SzData, SzData2, SzN, SzN2
 
-SzGamma: TypeAlias = Real[Array, "data-1"]
-SzGamma2: TypeAlias = Real[Array, "data-1 2"]
-
-
-def interpax_PPoly_from_scipy_UnivariateSpline(
-    scipy_spl: scipy.interpolate.UnivariateSpline, /
-) -> interpax.PPoly:
-    """Convert a `scipy.interpolate.UnivariateSpline` to an `interpax.PPoly`."""
-    # scipy UnivariateSpline -> scipy PPoly. `_eval_args` is specific to some of
-    # the scipy splines, so this doesn't scale to all scipy splines :(.
-    scipy_ppoly = scipy.interpolate.PPoly.from_spline(scipy_spl._eval_args)
-    # Construct the interpax PPoly from the scipy one.
-    return interpax.PPoly(c=scipy_ppoly.c, x=scipy_ppoly.x)
-
-
-# ============================================================================
-# Tools for constructing `gamma` from an ordered list of points
-
-
-def point_to_point_distance(data: SzData2, /) -> SzGamma:
-    """Return the distance between points in data.
-
-    The data should be sorted, otherwise this doesn't make a lot of sense.
-
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-
-    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [0, 2]])
-    >>> point_to_point_distance(data)
-    Array([1., 2., 1.], dtype=float64)
-
-    """
-    vec_p2p = jnp.diff(data, axis=0)  # vector pointing from p_{i} to p_{i+1}
-    d_p2p = jnp.linalg.vector_norm(vec_p2p, axis=1)  # distance = norm of the vecs
-    return d_p2p
-
-
-def point_to_point_arclenth(data: SzData2, /) -> SzGamma:
-    """Return a P2P approximation of the arc-length.
-
-    The data should be sorted, otherwise this doesn't make a lot of sense.
-
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-
-    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [0, 2]])
-    >>> point_to_point_arclenth(data)
-    Array([1., 3., 4.], dtype=float64)
-
-    """
-    return jnp.cumsum(point_to_point_distance(data))
-
-
-def make_gamma_from_data(data: SzData2, /) -> SzGamma:
-    r"""Return $\gamma$, the normalized arc-length of the data.
-
-    $$ \gamma = 2\frac{s}{L} - 1 , \in [-1, 1] $$
-
-    where $s$ is the arc-length at $\gamma$ and $L$ is the total arc-length.
-
-    Gamma is constructed approximately using a point-to-point approximation (the
-    function `point_to_point_arclenth`).
-
-    Notes
-    -----
-    This is guaranteed to be monotonically non-decreasing since the
-    point-to-point arc-length is always non-negative. However, this is not
-    guaranteed to be monotonically *increasing* since adjacent data points can
-    have 0 distance. See `make_increasing_gamma_from_data` for a function that
-    trims the data such that gamma is monotonically increasing.
-
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-
-    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [0, 2]])
-    >>> make_gamma_from_data(data)
-    Array([-1.        ,  0.33333333,  1.        ], dtype=float64)
-
-    """
-    s = point_to_point_arclenth(data)  # running arc-length
-    s_min = s.min()
-    gamma = 2 * (s - s_min) / (s.max() - s_min) - 1  # normalize to range
-    return gamma
-
-
-# -------------------------------------
-
-
-# Cut out portions where gamma is not monotonic
-def _find_plateau_mask(arr: SzN, /) -> SzN:
-    """Return a mask that marks plateaus in the array.
-
-    `True` where it is NOT a plateau. `False` where it is a plateau. The first
-    element of a plateau is marked as `True`.
-
-    """
-    # Mark True where increasing (x_{i+1} > x_i)
-    mask = jnp.ones_like(arr, dtype=bool)
-    mask = mask.at[1:].set(arr[1:] > arr[:-1])
-    return mask
-
-
-def make_increasing_gamma_from_data(data: SzData2, /) -> tuple[SzGamma, SzGamma2]:
-    r"""Return the trimmed data and gamma, the normalized arc-length.
-
-    $$ \gamma = 2\frac{s}{L} - 1 , \in [-1, 1] $$
-
-    where $s$ is the arc-length at $\gamma$ and $L$ is the total arc-length.
-
-    Gamma is constructed approximately using a point-to-point (P2P)
-    approximation (the function `point_to_point_arclenth`). Using the P2P
-    arc-length is not guaranteed to be monotonically *increasing* since adjacent
-    data points can have 0 distance. This function then trims the data such that
-    gamma is monotonically increasing, keeping the first point of any plateau.
-
-    Returns
-    -------
-    gamma : Array[real, (N-1,)]
-        Monotonically increasing normalized arc-length.
-    data_trimmed : Array[real, (N-1, 2)]
-        The data, with points where gamma is non-increasing trimmed out.
-
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-
-    >>> data = jnp.array([[0, 0], [1, 0], [1, 2], [1, 2], [0, 2]])
-    >>> gamma, data2 = make_increasing_gamma_from_data(data)
-    >>> gamma, data2
-    (Array([-1.        ,  0.33333333,  1.        ], dtype=float64),
-     Array([[0.5, 0. ],
-           [1. , 1. ],
-           [0.5, 2. ]], dtype=float64))
-
-    Note that the second point [1, 2] was removed since it was a repeat,
-    resulting in a "plateau" in gamma. Then the point-to-point mean was returned
-    as the new data.
-
-    """
-    # Define gamma from the data using p2p approximation
-    gamma = make_gamma_from_data(data)  # (N,2) -> (N-1,)
-    # The length of gamma is N-1 and we need the data to match. The easiest
-    # solution is to just take the mean of adjacent points, since gamma is
-    # defined from the p2p approximation.
-    data_mean = (data[:-1, :] + data[1:, :]) / 2
-
-    # Find where gamma is non-increasing -- has plateaued.
-    where_increasing = _find_plateau_mask(gamma)
-
-    # Cut out all plateaus
-    gamma = gamma[where_increasing]
-    data_mean = data_mean[where_increasing]
-
-    return gamma, data_mean
-
-
-# ============================================================================
+from .funcs import speed
 
 
 @runtime_checkable
@@ -307,12 +141,12 @@ def data_distance_cost_fn(
 @ft.partial(jax.jit)
 def curvature_cost_fn(
     params: SzN2,
-    gamma_knots: SzN,
+    init_gamma: SzN,
     data_gamma: SzData,
     data_target: SzData,  # noqa: ARG001
 ) -> Sz0:
     """Cost function to penalize changes in curvature."""
-    spline = interpax.Interpolator1D(gamma_knots, params, method="cubic2")
+    spline = interpax.Interpolator1D(init_gamma, params, method="cubic2")
     d2x_d2gamma = jax.vmap(jax.jacfwd(jax.jacfwd(spline)))(data_gamma)
     L = 100.0  # A large constant to make tanh approximate the sign function
     sign_approx = jnp.tanh(L * d2x_d2gamma)
@@ -327,7 +161,7 @@ def curvature_cost_fn(
 @ft.partial(jax.jit)
 def _no_curvature_cost_fn(
     params: SzN2,  # noqa: ARG001
-    gamma_knots: SzN,  # noqa: ARG001
+    init_gamma: SzN,  # noqa: ARG001
     data_gamma: SzData,  # noqa: ARG001
     data_target: SzData,  # noqa: ARG001
 ) -> Sz0:
@@ -338,7 +172,7 @@ def _no_curvature_cost_fn(
 @ft.partial(jax.jit, static_argnames=("penalize_concavity_changes",))
 def default_cost_fn(
     params: SzN2,
-    gamma_knots: SzN,
+    init_gamma: SzN,
     data_gamma: SzData,
     data_target: SzData,
     *,
@@ -350,9 +184,9 @@ def default_cost_fn(
     Parameters
     ----------
     params:
-        Output values of spline at gamma_knots -- e.g. x or y values.
+        Output values of spline at init_gamma -- e.g. x or y values.
         This is the parameter to be optimized to minimize the cost function.
-    gamma_knots:
+    init_gamma:
         The gamma values at which the spline is anchored. There are N of these,
         one per `params`. These are fixed while the `params` are optimized.
 
@@ -366,7 +200,7 @@ def default_cost_fn(
 
     """
     data_cost = data_distance_cost_fn(
-        params, gamma_knots, data_gamma, data_target, sigmas=sigmas
+        params, init_gamma, data_gamma, data_target, sigmas=sigmas
     )
 
     # Optionally add a penalization for changes in concavity
@@ -375,7 +209,7 @@ def default_cost_fn(
         curvature_cost_fn,
         _no_curvature_cost_fn,
         params,
-        gamma_knots,
+        init_gamma,
         data_gamma,
         data_target,
     )
@@ -391,8 +225,8 @@ StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
 def optimize_spline_knots(
     cost_fn: Callable[..., Sz0],  # TODO: full type hint
     /,
-    init_params: SzN2,
-    gamma_knots: SzN,
+    init_knots: SzN2,
+    init_gamma: SzN,
     data_gamma: SzData,
     data_target: SzData2,
     *,
@@ -419,9 +253,9 @@ def optimize_spline_knots(
     ----------
     cost_fn
         The cost function.
-    init_params
-        starting outputs of splines at gamma_knots.
-    gamma_knots
+    init_knots
+        starting outputs of splines at init_gamma.
+    init_gamma
         anchor points for spline. median gamma in chunk.
 
     data_gamma
@@ -440,10 +274,10 @@ def optimize_spline_knots(
 
     @ft.partial(jax.jit)
     def loss_fn(params: SzN2) -> Sz0:
-        return cost_fn(params, gamma_knots, data_gamma, data_target, sigmas=sigmas)
+        return cost_fn(params, init_gamma, data_gamma, data_target, sigmas=sigmas)
 
     # Choose an optimizer: Adam or SGD.
-    opt_state = optimizer.init(init_params)
+    opt_state = optimizer.init(init_knots)
 
     # Define a single optimization step.
     @ft.partial(jax.jit)
@@ -457,6 +291,56 @@ def optimize_spline_knots(
 
     # Run the optimization using jax.lax.scan.
     (final_params, _), _ = jax.lax.scan(
-        step_fn, (init_params, opt_state), None, length=nsteps
+        step_fn, (init_knots, opt_state), None, length=nsteps
     )
     return final_params
+
+
+@ft.partial(jax.jit, static_argnames=("nknots",))
+def new_gamma_knots_from_spline(
+    spline: interpax.Interpolator1D, /, *, nknots: int
+) -> tuple[Real[Array, "{nknots}"], Real[Array, "{nknots} 2"]]:
+    """Define new gamma (and knots) from an existing spline.
+
+    When the knots of a spline are changed the arc-length of the spline changes
+    as well. It is often useful to define a new gamma that is the normalized
+    arc-length of the spline. This function takes a spline and returns a new
+    gamma (and corresponding knots) that is the normalized arc-length of the
+    spline so that a new spline can be created with the new gamma (and knots).
+
+    Parameters
+    ----------
+    spline
+        The spline to use to define the new gamma.
+
+    nknots
+        The number of knots to use in the new spline.
+
+    Returns
+    -------
+    gamma_new
+        The new gamma values. One is at -1 and one is at 1. The rest are
+        evenly spaced in between.
+    points_new
+        The new points of the spline at the new gamma values.
+
+    """
+    # Validate nknots
+    nknots = eqx.error_if(
+        nknots, nknots < 2 or nknots > 1_000, "nknots must be in [2, 1_000]"
+    )
+
+    # Use the quadratic approximation of the spline to get the arc-length
+    gamma_old = jnp.linspace(
+        spline.x.min(), spline.x.max(), int(1e5), dtype=float
+    )  # old gammas
+    vs = jax.vmap(speed, in_axes=(None, 0))(spline, gamma_old)
+    s = jnp.cumsum(vs)
+    gamma_new = 2 * s / s[-1] - 1  # new gamma in [-1, 1]
+
+    # subselect gamma down to nknots
+    sel = jnp.linspace(0, len(gamma_new), nknots, dtype=int)
+    gamma_new = gamma_new[sel]
+    points_new = spline(gamma_old[sel])
+
+    return gamma_new, points_new

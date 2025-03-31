@@ -16,11 +16,10 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import matplotlib.pyplot as plt
-from jax.experimental.ode import odeint
 from jaxtyping import Array, Real
 
+from . import splinelib
 from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN
-from .splinelib import point_to_point_distance
 
 log2pi = jnp.log(2 * jnp.pi)
 
@@ -116,29 +115,23 @@ class AbstractTrack:
         The tangent vector is defined as:
 
         $$
-            \frac{d\mathbf{r}}{d\gamma} =
+            \frac{d\vec{x}}{d\gamma} =
                 \begin{bmatrix}
                     \frac{dx}{d\gamma} \\ \frac{dy}{d\gamma}
                 \end{bmatrix}
         $$
 
-        This function is scalar. To compute the unit tangent vector at multiple
-        positions, use `jax.vmap`.
-
         Parameters
         ----------
         gamma
             The scalar gamma value at which to evaluate the spline.
-            This is for `jax.vmap` compatibility.
-        spline
-            The spline interpolator.
         forward
             If `True`, compute forward tangents; otherwise, compute backward
             tangents. Defaults to `True`.
 
         Returns
         -------
-        Array[real, (2,)]
+        Array[real, (*batch, 2)]
             The tangent vector at the specified position.
 
         Examples
@@ -162,9 +155,7 @@ class AbstractTrack:
          [ 0. -2.]]
 
         """
-        jac_fn = jax.jacfwd if forward else jax.jacrev
-        tangent_fn = jac_fn(self.ridge_line)
-        return tangent_fn(gamma)
+        return splinelib.tangent(self.ridge_line, gamma, forward=forward)
 
     @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
@@ -175,16 +166,11 @@ class AbstractTrack:
 
         $$ \hat{\mathbf{T}} = \mathbf{T} / \|\mathbf{T}\| $$
 
-        This function is scalar. To compute the unit tangent vector at multiple
-        positions, use `jax.vmap`.
-
         Parameters
         ----------
         gamma
-            The scalar gamma value at which to evaluate the spline. This is for
-            `jax.vmap` compatibility.
-        spline
-            The spline interpolator.
+            The gamma value at which to evaluate the spline.
+
         forward
             If `True`, compute forward tangents; otherwise, compute backward
             tangents. Defaults to `True`.
@@ -216,13 +202,12 @@ class AbstractTrack:
          [ 0. -1.]]
 
         """
-        tangents = self.tangent(gamma, forward=forward)
-        return tangents / jnp.linalg.vector_norm(tangents)
+        return splinelib.unit_tangent(self.ridge_line, gamma, forward=forward)
 
     @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
     def state_speed(self, gamma: Sz0, /, *, forward: bool = True) -> Sz0:
-        """Return the speed in gamma of the track at a given position.
+        r"""Return the speed in gamma of the track at a given position.
 
         This is the norm of the tangent vector at the given position.
 
@@ -273,98 +258,10 @@ class AbstractTrack:
 
         """
         # TODO: confirm that this equals L/2 for gamma \propto s
-        return jnp.linalg.norm(self.tangent(gamma, forward=forward))
+        return splinelib.speed(self.ridge_line, gamma, forward=forward)
 
     # -------------------------------------------
     # Arc-length
-
-    @ft.partial(jax.jit, inline=True, static_argnames=("num"))
-    def _arc_length_p2p(
-        self, gamma0: LikeSz0 = -1, gamma1: LikeSz0 = 1, *, num: int = 100_000
-    ) -> Sz0:
-        """Compute the arc-length using point-to-point distance.
-
-        Parameters
-        ----------
-        gamma0, gamma1
-            The starting / ending gamma value between which to compute the
-            arc-length. The default is [-1, 1], which is the full range of gamma
-            for the track.
-        num
-            The number of points to use for the quadrature. The default is
-            100,000.
-
-        """
-        gammas = jnp.linspace(gamma0, gamma1, num, dtype=float)
-        x = self.ridge_line(gammas)
-        d_p2p = point_to_point_distance(x)
-        return jnp.sum(d_p2p)
-
-    @ft.partial(jax.jit, inline=True, static_argnames=("num"))
-    def _arc_length_quadtrature(
-        self, gamma0: LikeSz0 = -1, gamma1: LikeSz0 = 1, *, num: int = 100_000
-    ) -> Sz0:
-        """Compute the arc-length using fixed quadrature.
-
-        Parameters
-        ----------
-        gamma0, gamma1
-            The starting / ending gamma value between which to compute the
-            arc-length. The default is [-1, 1], which is the full range of gamma
-            for the track.
-        num
-            The number of points to use for the quadrature. The default is
-            100,000.
-
-        """
-        gammas = jnp.linspace(gamma0, gamma1, num, dtype=float)
-        speeds = jax.vmap(self.state_speed)(gammas)
-        dgamma = (gamma1 - gamma0) / (num - 1)
-        return jnp.sum(speeds) * dgamma
-
-    @ft.partial(
-        jax.jit, inline=True, static_argnames=("rtol", "atol", "mxstep", "hmax")
-    )
-    def _arc_length_odeint(
-        self,
-        gamma0: LikeSz0 = -1,
-        gamma1: LikeSz0 = 1,
-        *,
-        rtol: float = 1.4e-8,
-        atol: float = 1.4e-8,
-        mxstep: float = jnp.inf,
-        hmax: float = jnp.inf,
-    ) -> Sz0:
-        """Compute the arc-length using ODE integration.
-
-        Parameters
-        ----------
-        gamma0, gamma1
-            The starting / ending gamma value between which to compute the
-            arc-length. The default is [-1, 1], which is the full range of gamma
-            for the track.
-
-        rtol, atol
-            The relative and absolute tolerances for the ODE solver. The default
-            is 1.4e-8.
-        mxstep, hmax
-            The maximum number of steps and maximum step size for the ODE
-            solver. The default is inf.
-
-        """
-
-        @ft.partial(jax.jit)
-        def ds_dgamma(_: Sz0, gamma: Sz0) -> Sz0:
-            return self.state_speed(gamma)
-
-        # Set integration endpoints.
-        t = jnp.array([gamma0, gamma1], dtype=float)
-        s0 = 0.0  # initial arc length
-
-        # Use odeint to integrate the ODE.
-        s = odeint(ds_dgamma, s0, t, rtol=rtol, atol=atol, mxstep=mxstep, hmax=hmax)
-        arc_length = s[-1]
-        return arc_length
 
     @ft.partial(jax.jit, static_argnames=("method", "method_kw"))
     def arc_length(
@@ -375,7 +272,7 @@ class AbstractTrack:
         method: Literal["p2p", "quad", "ode"] = "quad",
         method_kw: dict[str, Any] | None = None,
     ) -> Sz0:
-        """Return the arc-length of the track.
+        r"""Return the arc-length of the track.
 
         $$
             s(\gamma_0, \gamma_1) = \int_{\gamma_0}^{\gamma_1} \left\|
@@ -406,19 +303,13 @@ class AbstractTrack:
               compute the integral.
 
         """
-        methods = ("p2p", "quad", "ode")
-        kw = method_kw if method_kw is not None else {}
-        branches = [
-            eqx.Partial(self._arc_length_p2p, **kw),
-            eqx.Partial(self._arc_length_quadtrature, **kw),
-            eqx.Partial(self._arc_length_odeint, **kw),
-        ]
-        operands = (gamma0, gamma1)
-        return jax.lax.switch(methods.index(method), branches, *operands)
+        return splinelib.arc_length(
+            self.ridge_line, gamma0, gamma1, method=method, method_kw=method_kw
+        )
 
     @property
     def total_arc_length(self) -> Sz0:
-        """Return the total arc-length of the track.
+        r"""Return the total arc-length of the track.
 
         $$
             L = s(-1, 1) = \int_{-1}^{1} \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
@@ -475,10 +366,9 @@ class AbstractTrack:
         gamma is proportional to the curvature vector.
 
         """
-        jac_fn = jax.jacfwd if forward else jax.jacrev
-        dThat_dgamma_fn = jac_fn(self.unit_tangent)
-        return dThat_dgamma_fn(gamma, forward=forward)
+        return splinelib.dThat_dgamma(self.ridge_line, gamma, forward=forward)
 
+    @ft.partial(jax.jit, static_argnames=("forward",))
     def curvature(self, gamma: Sz0, /, *, forward: bool = True) -> Sz0:
         r"""Return the curvature at a given position along the stream.
 
@@ -516,9 +406,7 @@ class AbstractTrack:
             compute using backward-mode differentiation. Defaults to `True`.
 
         """
-        dThat = self.dThat_dgamma(gamma, forward=forward)
-        ds = self.state_speed(gamma, forward=forward)
-        return dThat / ds
+        return splinelib.curvature(self.ridge_line, gamma, forward=forward)
 
     @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
@@ -544,9 +432,7 @@ class AbstractTrack:
         $$ \hat{N} = \frac{\kappa \hat{N}}{\|\kappa \hat{N}\|}. $$
 
         """
-        dThat = self.dThat_dgamma(gamma, forward=forward)
-        unit_curvature = dThat / jnp.linalg.vector_norm(dThat)
-        return unit_curvature
+        return splinelib.unit_curvature(self.ridge_line, gamma, forward=forward)
 
     # =====================================================
     # Plotting methods
