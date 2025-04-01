@@ -36,6 +36,7 @@ dependencies = [
     "scipy>=1.15.2",
     "typing-extensions>=4.12.2",
     "unxt>=1.3.2",
+    "xmmutablemap>=0.1",
 ]
 
 [project.urls]
@@ -133,6 +134,7 @@ module = [
   "optax.*",
   "scipy.*",
   "unxt.*",
+  "xmmutablemap.*",
 ]
 ignore_missing_imports = true
 

@@ -20,6 +20,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from jaxtyping import Array, Real
+from xmmutablemap import ImmutableMap
 
 from streamcurvature._src.custom_types import Sz0, SzData, SzData2, SzN, SzN2
 
@@ -188,8 +189,7 @@ def curvature_cost_fn(
     d2x_dgamma2 = jax.vmap(jax.jacfwd(jax.jacfwd(spline)))(data_gamma)
     L = 100.0  # A large constant to make tanh approximate the sign function
     sign_approx = jnp.tanh(L * d2x_dgamma2)
-    lambda_sign = 1_000  # TODO: allow setting this
-    sign_flip_cost = lambda_sign * jnp.sum((sign_approx[1:] - sign_approx[:-1]) ** 2)
+    sign_flip_cost = jnp.sum((sign_approx[1:] - sign_approx[:-1]) ** 2)
     return sign_flip_cost
 
 
@@ -218,14 +218,15 @@ def default_cost_fn(
     *,
     sigmas: float = 1.0,
     penalize_concavity_changes: bool = False,
+    lambda_concavity: float = 10.0,
 ) -> Sz0:
     """Cost function to minimize that compares data to spline fit.
 
     Parameters
     ----------
     knots
-        Output values of spline at gamma -- e.g. x or y values.
-        This is the parameter to be optimized to minimize the cost function.
+        Output values of spline at gamma -- e.g. x or y values. This is the
+        parameter to be optimized to minimize the cost function.
     gamma:
         The gamma values at which the spline is anchored. There are N of these,
         one per `knots`. These are fixed while the `knots` are optimized.
@@ -237,6 +238,14 @@ def default_cost_fn(
 
     sigmas:
         The uncertainty on each datum in `data_y`.
+
+    penalize_concavity_changes
+        Whether to penalize changes in concavity of the spline. This can help to
+        produce a smoother spline that does not have abrupt changes in
+        curvature. This is a static argument.
+    lambda_concavity
+        The weight of the curvature penalization term. This should be tuned
+        based on the desired smoothness of the spline. Default is `10.0`.
 
     """
     data_cost = data_distance_cost_fn(knots, gamma, data_gamma, data_y, sigmas=sigmas)
@@ -252,7 +261,7 @@ def default_cost_fn(
         data_y,
     )
 
-    return data_cost + curvature_cost
+    return data_cost + lambda_concavity * curvature_cost
 
 
 DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
@@ -270,7 +279,7 @@ def optimize_spline_knots(
     data_gamma: SzData,
     data_target: SzData2,
     *,
-    cost_kwargs: dict[str, Any] | None = None,
+    cost_kwargs: ImmutableMap[str, Any] | None = None,
     optimizer: optax.GradientTransformation = DEFAULT_OPTIMIZER,
     nsteps: int = 10_000,
 ) -> SzN2:
