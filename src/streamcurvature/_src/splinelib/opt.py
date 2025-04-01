@@ -11,7 +11,6 @@ __all__ = [  # noqa: RUF022
 ]
 
 import functools as ft
-from collections.abc import Callable
 from typing import Any, Protocol, TypeAlias, runtime_checkable
 
 import equinox as eqx
@@ -208,7 +207,7 @@ def _no_curvature_cost_fn(
     return jnp.zeros(())
 
 
-@ft.partial(jax.jit, static_argnames=("penalize_concavity_changes",))
+@ft.partial(jax.jit)
 def default_cost_fn(
     knots: SzN2,
     gamma: SzN,
@@ -217,8 +216,7 @@ def default_cost_fn(
     data_y: SzData,
     *,
     sigmas: float = 1.0,
-    penalize_concavity_changes: bool = False,
-    lambda_concavity: float = 10.0,
+    lambda_concavity: float = 0.0,
 ) -> Sz0:
     """Cost function to minimize that compares data to spline fit.
 
@@ -238,21 +236,16 @@ def default_cost_fn(
 
     sigmas:
         The uncertainty on each datum in `data_y`.
-
-    penalize_concavity_changes
-        Whether to penalize changes in concavity of the spline. This can help to
-        produce a smoother spline that does not have abrupt changes in
-        curvature. This is a static argument.
     lambda_concavity
         The weight of the curvature penalization term. This should be tuned
-        based on the desired smoothness of the spline. Default is `10.0`.
+        based on the desired smoothness of the spline. Default is `0.0`.
 
     """
     data_cost = data_distance_cost_fn(knots, gamma, data_gamma, data_y, sigmas=sigmas)
 
     # Optionally add a penalization for changes in concavity
     curvature_cost = jax.lax.cond(
-        penalize_concavity_changes,
+        lambda_concavity > 0,
         curvature_cost_fn,
         _no_curvature_cost_fn,
         knots,
@@ -272,7 +265,7 @@ StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
     jax.jit, static_argnums=(0,), static_argnames=("cost_kwargs", "optimizer", "nsteps")
 )
 def optimize_spline_knots(
-    cost_fn: Callable[..., Sz0],  # TODO: full type hint
+    cost_fn: CostFn,
     /,
     init_knots: SzN2,
     init_gamma: SzN,
@@ -311,9 +304,11 @@ def optimize_spline_knots(
         gamma of every point in data.
     data_target
         x,y of every data point
-    sigmas
-        uncertainty on each datum.
 
+    cost_kwargs
+        Additional keyword arguments to pass to the cost function. E.g.
+        `data_distance_cost_fn` can take 'sigmas' and `curvature_cost_fn` can
+        take `lambda_concavity`. `default_cost_fn` can take both.
     optimizer
         The optimizer to use. Defaults to Adam with a learning rate of 1e-3.
     nsteps
