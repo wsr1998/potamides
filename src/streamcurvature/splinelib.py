@@ -20,6 +20,7 @@ __all__ = [  # noqa: RUF022
     "unit_curvature",
     # Optimizing splines
     "reduce_point_density",
+    "CostFn",
     "data_distance_cost_fn",
     "curvature_cost_fn",
     "default_cost_fn",
@@ -30,6 +31,7 @@ __all__ = [  # noqa: RUF022
 ]
 
 from ._src.splinelib import (
+    CostFn,
     arc_length,
     arc_length_odeint,
     arc_length_p2p,

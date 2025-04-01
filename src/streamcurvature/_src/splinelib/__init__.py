@@ -20,6 +20,7 @@ __all__ = [  # noqa: RUF022
     "unit_curvature",
     # Optimizing splines
     "reduce_point_density",
+    "CostFn",
     "data_distance_cost_fn",
     "curvature_cost_fn",
     "default_cost_fn",
@@ -50,6 +51,7 @@ from .funcs import (
     unit_tangent,
 )
 from .opt import (
+    CostFn,
     curvature_cost_fn,
     data_distance_cost_fn,
     default_cost_fn,

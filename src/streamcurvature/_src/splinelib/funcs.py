@@ -464,6 +464,7 @@ def curvature(
         compute using backward-mode differentiation. Defaults to `True`.
 
     """
+    # FIXME: double check it's dThat_dgamma
     dThat = dThat_dgamma(spline, gamma, forward=forward)
     ds = speed(spline, gamma, forward=forward)
     return dThat / ds
