@@ -2,7 +2,7 @@
 
 __all__: list[str] = []
 
-from functools import partial
+import functools as ft
 
 import galax.potential as gp
 import jax
@@ -18,21 +18,21 @@ from .custom_types import LikeQorVSz0, LikeSz0, QorVSzN3, Sz0, SzN2
 # ============================================================================
 
 
-@partial(jax.jit, inline=True)
+@ft.partial(jax.jit, inline=True)
 def rotation_z(theta_z: Sz0) -> Real[Array, "3 3"]:
     """Rotation about the fixed z-axis by theta_z (counterclockwise)."""
     c, s = jnp.cos(theta_z), jnp.sin(theta_z)
     return jnp.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
 
 
-@partial(jax.jit, inline=True)
+@ft.partial(jax.jit, inline=True)
 def rotation_x(theta_x: Sz0) -> Real[Array, "3 3"]:
     """Rotation about the fixed x-axis by theta_x (counterclockwise)."""
     c, s = jnp.cos(theta_x), jnp.sin(theta_x)
     return jnp.array([[1, 0, 0], [0, c, -s], [0, s, c]])
 
 
-@partial(jax.jit)
+@ft.partial(jax.jit)
 def total_rotation(theta_z: Sz0, theta_x: Sz0) -> Real[Array, "3 3"]:
     """First rotate about z (fixed) by theta_z, then about x (fixed) by theta_x."""
     return rotation_x(theta_x) @ rotation_z(theta_z)
@@ -41,9 +41,10 @@ def total_rotation(theta_z: Sz0, theta_x: Sz0) -> Real[Array, "3 3"]:
 # ============================================================================
 
 
-@partial(jax.jit, static_argnames=("withdisk",))
+@ft.partial(jax.jit, static_argnames=("withdisk",))
 def compute_accelerations(
     pos: QorVSzN3,  # [kpc]
+    /,
     rot_z: LikeQorVSz0 = 0.0,
     rot_x: LikeQorVSz0 = 0.0,
     q1: LikeSz0 = 1.0,
