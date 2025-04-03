@@ -22,7 +22,7 @@ __all__ = [  # noqa: RUF022
     "reduce_point_density",
     "CostFn",
     "data_distance_cost_fn",
-    "curvature_cost_fn",
+    "concavity_change_cost_fn",
     "default_cost_fn",
     "optimize_spline_knots",
     "new_gamma_knots_from_spline",
@@ -52,7 +52,7 @@ from .funcs import (
 )
 from .opt import (
     CostFn,
-    curvature_cost_fn,
+    concavity_change_cost_fn,
     data_distance_cost_fn,
     default_cost_fn,
     new_gamma_knots_from_spline,
