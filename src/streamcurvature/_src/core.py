@@ -107,7 +107,7 @@ class AbstractTrack:
     # -------------------------------------------
     # Tangents
 
-    @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     @ft.partial(jax.jit, static_argnames=("forward",))
     def tangent(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Compute the tangent vector at a given position along the stream.
@@ -157,7 +157,7 @@ class AbstractTrack:
         """
         return splinelib.tangent(self.ridge_line, gamma, forward=forward)
 
-    @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     @ft.partial(jax.jit, static_argnames=("forward",))
     def unit_tangent(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Compute the unit tangent vector at a given position along the stream.

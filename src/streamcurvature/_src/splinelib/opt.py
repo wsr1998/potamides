@@ -4,7 +4,7 @@ __all__ = [  # noqa: RUF022
     "reduce_point_density",
     "CostFn",
     "data_distance_cost_fn",
-    "curvature_cost_fn",
+    "concavity_change_cost_fn",
     "default_cost_fn",
     "optimize_spline_knots",
     "new_gamma_knots_from_spline",
@@ -23,7 +23,7 @@ from xmmutablemap import ImmutableMap
 
 from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
 
-from .funcs import speed
+from .funcs import speed, unit_curvature, unit_tangent
 
 
 @runtime_checkable
@@ -175,13 +175,29 @@ def data_distance_cost_fn(
 
 
 @ft.partial(jax.jit)
-def curvature_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> Sz0:
+def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> Sz0:
     """Cost function to penalize changes in curvature."""
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
-    d2x_dgamma2 = jax.vmap(jax.jacfwd(jax.jacfwd(spline)))(data_gamma)
-    L = 100.0  # A large constant to make tanh approximate the sign function
-    sign_approx = jnp.tanh(L * d2x_dgamma2)
-    sign_flip_cost = jnp.sum((sign_approx[1:] - sign_approx[:-1]) ** 2)
+
+    # Tangent vectors
+    That = jax.vmap(unit_tangent, (None, 0))(spline, data_gamma)
+
+    # Normal vectors: rotate tangent 90° counterclockwise
+    normals = jnp.stack([-That[:, 1], That[:, 0]], axis=1)  # shape (N, 2)
+
+    # Unit curvature vectors
+    kappa_vecs = jax.vmap(unit_curvature, (None, 0))(spline, data_gamma)
+
+    # Signed curvature = projection of curvature vector onto normal
+    signed_curvature = jnp.einsum("ij,ij->i", kappa_vecs, normals)
+
+    # Tanh approximation to sign flip count
+    L = 100.0
+    sign_approx = jnp.tanh(L * signed_curvature)
+
+    # count the number of sign flips in the approximation.
+    sign_flip_cost = jnp.sum((jnp.diff(sign_approx)) ** 2)
+
     return sign_flip_cost
 
 
@@ -189,7 +205,7 @@ def curvature_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> Sz0:
 
 
 @ft.partial(jax.jit)
-def _no_curvature_cost_fn(
+def _no_concavity_change_cost_fn(
     knots: SzN2,  # noqa: ARG001
     gamma: SzN,  # noqa: ARG001
     /,
@@ -238,8 +254,8 @@ def default_cost_fn(
     # Optionally add a penalization for changes in concavity
     curvature_cost = jax.lax.cond(
         lambda_concavity > 0,
-        curvature_cost_fn,
-        _no_curvature_cost_fn,
+        concavity_change_cost_fn,
+        _no_concavity_change_cost_fn,
         knots,
         gamma,
         data_gamma,
@@ -252,9 +268,10 @@ DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
 StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
 
 
-@ft.partial(
-    jax.jit, static_argnums=(0,), static_argnames=("cost_kwargs", "optimizer", "nsteps")
-)
+# @ft.partial(
+#     jax.jit, static_argnums=(0,), static_argnames=("cost_kwargs", "optimizer", "nsteps")
+# )
+@ft.partial(eqx.filter_jit)
 def optimize_spline_knots(
     cost_fn: CostFn,
     /,
@@ -296,7 +313,7 @@ def optimize_spline_knots(
         `data_y` as arguments.
     cost_kwargs
         Additional keyword arguments to pass to the cost function. E.g.
-        `data_distance_cost_fn` can take 'sigmas' and `curvature_cost_fn` can
+        `data_distance_cost_fn` can take 'sigmas' and `concavity_change_cost_fn` can
         take `lambda_concavity`. `default_cost_fn` can take both. JAX treats
         these as static.
 
