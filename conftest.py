@@ -1,13 +1,19 @@
 """Doctest configuration."""
 
 from doctest import ELLIPSIS, NORMALIZE_WHITESPACE
+from typing import Any
 
 import jax
+import numpy as np
+import pytest
 from sybil import Sybil
 from sybil.parsers import myst, rest
 from sybil.sybil import SybilCollection
 
 jax.config.update("jax_enable_x64", True)
+
+###########################################################
+# Sybil Doctest Configuration
 
 optionflags = ELLIPSIS | NORMALIZE_WHITESPACE
 
@@ -36,3 +42,43 @@ rst_docs = Sybil(  # TODO: deprecate
 )
 
 pytest_collect_file = SybilCollection((docs, python, rst_docs)).pytest()
+
+
+###########################################################
+# Pytest configuration
+
+
+def pytest_collection_modifyitems(items) -> None:
+    """
+    Automatically modify pytest items to suppress return-value warnings for
+    array_compare tests.
+
+    Tests marked with `@pytest.mark.array_compare` are expected to return arrays
+    for comparison, which violates pytest's default expectation that tests
+    return `None`. This function adds a warning filter to such tests to ignore
+    the PytestReturnNotNoneWarning.
+
+    Parameters
+    ----------
+    items : list
+        A list of pytest Item objects collected during test discovery.
+
+    """
+    for item in items:
+        if "array_compare" in item.keywords or "as_numpy" in item.keywords:
+            item.add_marker(
+                pytest.mark.filterwarnings("ignore::pytest.PytestReturnNotNoneWarning")
+            )
+
+
+def pytest_runtest_call(item) -> None:
+    # Need to wrap the test function to ensure it returns a numpy array since
+    # pytest-array only works with numpy
+    if item.get_closest_marker("array_compare"):
+        test_func = item.obj
+
+        def wrapped(*args: Any, **kwargs: Any) -> np.ndarray:
+            result = test_func(*args, **kwargs)
+            return np.array(result)
+
+        item.obj = wrapped

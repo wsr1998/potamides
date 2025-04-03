@@ -107,8 +107,8 @@ class AbstractTrack:
     # -------------------------------------------
     # Tangents
 
+    @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
     @ft.partial(jax.jit, static_argnames=("forward",))
-    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def tangent(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Compute the tangent vector at a given position along the stream.
 
@@ -157,8 +157,8 @@ class AbstractTrack:
         """
         return splinelib.tangent(self.ridge_line, gamma, forward=forward)
 
+    @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
     @ft.partial(jax.jit, static_argnames=("forward",))
-    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     def unit_tangent(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Compute the unit tangent vector at a given position along the stream.
 
@@ -204,8 +204,8 @@ class AbstractTrack:
         """
         return splinelib.unit_tangent(self.ridge_line, gamma, forward=forward)
 
-    @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
+    @ft.partial(jax.jit, static_argnames=("forward",))
     def state_speed(self, gamma: Sz0, /, *, forward: bool = True) -> Sz0:
         r"""Return the speed in gamma of the track at a given position.
 
@@ -324,8 +324,8 @@ class AbstractTrack:
     # -------------------------------------------
     # Curvature
 
-    @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    @ft.partial(jax.jit, static_argnames=("forward",))
     def dThat_dgamma(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Return the gamma derivative of the unit tangent vector.
 
@@ -368,6 +368,7 @@ class AbstractTrack:
         """
         return splinelib.dThat_dgamma(self.ridge_line, gamma, forward=forward)
 
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     @ft.partial(jax.jit, static_argnames=("forward",))
     def curvature(self, gamma: Sz0, /, *, forward: bool = True) -> Sz0:
         r"""Return the curvature at a given position along the stream.
@@ -408,8 +409,8 @@ class AbstractTrack:
         """
         return splinelib.curvature(self.ridge_line, gamma, forward=forward)
 
-    @ft.partial(jax.jit, static_argnames=("forward",))
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    @ft.partial(jax.jit, static_argnames=("forward",))
     def unit_curvature(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
         r"""Return the unit curvature vector.
 
