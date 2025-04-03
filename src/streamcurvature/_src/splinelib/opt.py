@@ -21,7 +21,7 @@ import optax
 from jaxtyping import Array, Real
 from xmmutablemap import ImmutableMap
 
-from streamcurvature._src.custom_types import Sz0, SzData, SzData2, SzN, SzN2
+from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
 
 from .funcs import speed
 
@@ -124,8 +124,7 @@ class CostFn(Protocol):
         knots: SzN2,
         gamma: SzN,
         /,
-        data_gamma: SzData,
-        data_y: SzData,
+        *cost_args: Any,
         **kwargs: Any,
     ) -> Sz0: ...
 
@@ -175,14 +174,7 @@ def data_distance_cost_fn(
 
 
 @ft.partial(jax.jit)
-def curvature_cost_fn(
-    knots: SzN2,
-    gamma: SzN,
-    /,
-    data_gamma: SzData,
-    data_y: SzData,  # noqa: ARG001
-    **kwargs: Any,  # noqa: ARG001
-) -> Sz0:
+def curvature_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> Sz0:
     """Cost function to penalize changes in curvature."""
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
     d2x_dgamma2 = jax.vmap(jax.jacfwd(jax.jacfwd(spline)))(data_gamma)
@@ -201,7 +193,6 @@ def _no_curvature_cost_fn(
     gamma: SzN,  # noqa: ARG001
     /,
     data_gamma: SzData,  # noqa: ARG001
-    data_y: SzData,  # noqa: ARG001
 ) -> Sz0:
     """Return 0.0."""
     return jnp.zeros(())
@@ -211,9 +202,9 @@ def _no_curvature_cost_fn(
 def default_cost_fn(
     knots: SzN2,
     gamma: SzN,
-    /,
     data_gamma: SzData,
     data_y: SzData,
+    /,
     *,
     sigmas: float = 1.0,
     lambda_concavity: float = 0.0,
@@ -251,7 +242,6 @@ def default_cost_fn(
         knots,
         gamma,
         data_gamma,
-        data_y,
     )
 
     return data_cost + lambda_concavity * curvature_cost
@@ -269,8 +259,7 @@ def optimize_spline_knots(
     /,
     init_knots: SzN2,
     init_gamma: SzN,
-    data_gamma: SzData,
-    data_target: SzData2,
+    cost_args: tuple[Any, ...],
     *,
     cost_kwargs: ImmutableMap[str, Any] | None = None,
     optimizer: optax.GradientTransformation = DEFAULT_OPTIMIZER,
@@ -300,15 +289,16 @@ def optimize_spline_knots(
     init_gamma
         anchor points for spline. median gamma in chunk.
 
-    data_gamma
-        gamma of every point in data.
-    data_target
-        x,y of every data point
-
+    cost_args
+        Additional positional arguments to pass to the cost function. For
+        example, `cost_fn` can be `default_cost_fn` which takes `data_gamma` and
+        `data_y` as arguments.
     cost_kwargs
         Additional keyword arguments to pass to the cost function. E.g.
         `data_distance_cost_fn` can take 'sigmas' and `curvature_cost_fn` can
-        take `lambda_concavity`. `default_cost_fn` can take both.
+        take `lambda_concavity`. `default_cost_fn` can take both. JAX treats
+        these as static.
+
     optimizer
         The optimizer to use. Defaults to Adam with a learning rate of 1e-3.
     nsteps
@@ -319,7 +309,7 @@ def optimize_spline_knots(
 
     @ft.partial(jax.jit)
     def loss_fn(params: SzN2) -> Sz0:
-        return cost_fn(params, init_gamma, data_gamma, data_target, **cost_kw)
+        return cost_fn(params, init_gamma, *cost_args, **cost_kw)
 
     # Choose an optimizer: Adam or SGD.
     opt_state = optimizer.init(init_knots)
