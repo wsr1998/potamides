@@ -450,7 +450,7 @@ class AbstractTrack:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
         # Plot track itself
-        ax.plot(*self(gamma).T, c="red", ls="-", label=label)
+        ax.plot(*self(gamma).T, c="red", ls="-", lw=1, label=label)
 
         # Add the knot points
         ax.scatter(*self.knots.T, s=10, c="red", zorder=10)
@@ -561,7 +561,40 @@ class AbstractTrack:
         vec_width: float = 0.003,
         vec_scale: float = 30,
         labels: bool = True,
+        show_tangents: bool = True,
+        show_curvature: bool = True,
     ) -> plt.Axes:
+        r"""Plot the track, tangents, curvature, and local accelerations.
+
+        This method combines all the plotting methods into a single function to
+        easily visualize the track, tangents, curvature, and local accelerations
+        along the track. This is useful for quickly inspecting the geometry of a
+        track.
+
+        Parameters
+        ----------
+        gamma
+            The gamma values to evaluate the track and geometry at.
+        potential
+            The potential to use for computing local accelerations. If `None`,
+            the local acceleration vectors will not be plotted.
+
+        ax
+            The `matplotlib.axes.Axes` object to plot on. If `None`, a new
+            figure and axes will be created. Defaults to `None`.
+        vec_width
+            The width of the quiver arrows. Defaults to `0.003`.
+        vec_scale
+            The scale factor for the quiver arrows. This affects the length of
+            the arrows. Defaults to `30`.
+        labels
+            Whether to show labels. Defaults to `True`.
+        show_tangents
+            Whether to plot the unit tangent vectors. Defaults to `True`.
+        show_curvature
+            Whether to plot the unit curvature vectors. Defaults to `True`.
+
+        """
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
@@ -573,20 +606,22 @@ class AbstractTrack:
         )
 
         # Geometry along the track
-        self.plot_tangents(
-            gamma,
-            ax=ax,
-            vec_width=vec_width,
-            vec_scale=vec_scale,
-            label=r"$\hat{T}$" if labels else None,
-        )
-        self.plot_curvature(
-            gamma,
-            ax=ax,
-            vec_width=vec_width,
-            vec_scale=vec_scale,
-            label=r"$\hat{K}$" if labels else None,
-        )
+        if show_tangents:
+            self.plot_tangents(
+                gamma,
+                ax=ax,
+                vec_width=vec_width,
+                vec_scale=vec_scale,
+                label=r"$\hat{T}$" if labels else None,
+            )
+        if show_curvature:
+            self.plot_curvature(
+                gamma,
+                ax=ax,
+                vec_width=vec_width,
+                vec_scale=vec_scale,
+                label=r"$\hat{K}$" if labels else None,
+            )
 
         # Plot the local acceleration, assuming a potential
         if potential is not None:
