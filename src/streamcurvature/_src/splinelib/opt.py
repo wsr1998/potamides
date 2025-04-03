@@ -108,6 +108,7 @@ def reduce_point_density(
 # ---------------------------------------------------------
 
 
+@runtime_checkable
 class CostFn(Protocol):
     """Protocol for a cost function.
 
@@ -139,7 +140,7 @@ def data_distance_cost_fn(
     *,
     sigmas: SzN | float = 1.0,
 ) -> Sz0:
-    """Cost function to minimize that compares data to spline fit.
+    r"""Cost function to minimize that compares data to spline fit.
 
     $$ \text{cost} = \sum_i \left( \frac{y_i - f(\gamma_i)}{\sigma_i} \right)^2
     $$

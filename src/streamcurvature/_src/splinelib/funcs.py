@@ -72,10 +72,17 @@ def tangent(
     Array[real, (2,)]
         The tangent vector at the specified position.
 
+    See Also
+    --------
+    `streamcurvature.Track.tangent`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
+
     Examples
     --------
     Compute the tangent vector for specific points on the unit circle:
 
+    >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
     >>> import streamcurvature.splinelib as splib
@@ -83,16 +90,17 @@ def tangent(
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> x = 2 * jnp.cos(gamma)
     >>> y = 2 * jnp.sin(gamma)
-    >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1), kind="cubic2")
+    >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1), method="cubic2")
 
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
-    >>> tangents = splib.tangent(spline, gamma)
+    >>> tangents = jax.vmap(splib.tangent, (None, 0))(spline, gamma)
     >>> print(tangents.round(2))
     [[ 0.  2.]
      [-2.  0.]
      [ 0. -2.]]
 
     """
+    assert gamma.ndim == 0
     jac_fn = jax.jacfwd if forward else jax.jacrev
     return jac_fn(spline)(gamma)
 
@@ -126,6 +134,12 @@ def unit_tangent(
     Array[real, (2,)]
         The unit tangent vector at the specified position.
 
+    See Also
+    --------
+    `streamcurvature.Track.unit_tangent`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
+
     Examples
     --------
     Compute the unit tangent vector for specific points on the unit circle:
@@ -138,10 +152,10 @@ def unit_tangent(
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> x = 2 * jnp.cos(gamma)
     >>> y = 2 * jnp.sin(gamma)
-    >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1), kind="cubic2")
+    >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1), method="cubic2")
 
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
-    >>> unit_tangents = splib.unit_tangent(spline, gamma)
+    >>> unit_tangents = jax.vmap(splib.unit_tangent, (None, 0))(spline, gamma)
     >>> print(unit_tangents.round(2))
     [[ 0.  1.]
      [-1.  0.]
@@ -206,6 +220,12 @@ def speed(
     forward
         If `True`, compute using forward-mode differentiation; otherwise,
         compute using backward-mode differentiation. Defaults to `True`.
+
+    See Also
+    --------
+    `streamcurvature.Track.state_speed`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
 
     """
     # TODO: confirm that this equals L/2 for gamma \propto s
@@ -359,6 +379,12 @@ def arc_length(
         - "ode": ODE integration. This method uses ODE integration to
             compute the integral.
 
+    See Also
+    --------
+    `streamcurvature.Track.arc_length`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
+
     """
     methods = ("p2p", "quad", "ode")
     kw = method_kw if method_kw is not None else {}
@@ -417,6 +443,12 @@ def dThat_dgamma(
     Therefore the derivative of the unit tangent vector with respect to
     gamma is proportional to the curvature vector.
 
+    See Also
+    --------
+    `streamcurvature.Track.dThat_dgamma`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
+
     """
     jac_fn = jax.jacfwd if forward else jax.jacrev
     return jac_fn(unit_tangent, argnums=1)(spline, gamma, forward=forward)
@@ -463,6 +495,12 @@ def curvature(
         If `True`, compute using forward-mode differentiation; otherwise,
         compute using backward-mode differentiation. Defaults to `True`.
 
+    See Also
+    --------
+    `streamcurvature.Track.curvature`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
+
     """
     # FIXME: double check it's dThat_dgamma
     dThat = dThat_dgamma(spline, gamma, forward=forward)
@@ -493,6 +531,12 @@ def unit_curvature(
     normal vector (aka unit curvature vector), it follows that
 
     $$ \hat{N} = \frac{\kappa \hat{N}}{\|\kappa \hat{N}\|}. $$
+
+    See Also
+    --------
+    `streamcurvature.Track.unit_curvature`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
 
     """
     kappa = curvature(spline, gamma, forward=forward)

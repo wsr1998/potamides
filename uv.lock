@@ -1489,6 +1489,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-arraydiff"
+version = "0.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/8a/c43e892759d10d134763b6cccf853e66a18cd956616bebd4b7d782471534/pytest-arraydiff-0.6.1.tar.gz", hash = "sha256:2937b1450fc935620f24709d87d40c67e055a043d7b8541a25fdfa994dda67de", size = 16907 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cf/2a/2f8efb1ef8048aec7b44f37bc3fecb8c2c22e3238781d3e93c58d9c89268/pytest_arraydiff-0.6.1-py3-none-any.whl", hash = "sha256:64be1cc8e79874203eca80b1959134b8bb7a47b41cf7631310ba7fe6e5840694", size = 10042 },
+]
+
+[[package]]
 name = "pytest-cov"
 version = "6.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1957,6 +1970,7 @@ docs = [
 test = [
     { name = "optional-dependencies" },
     { name = "pytest" },
+    { name = "pytest-arraydiff" },
     { name = "pytest-cov" },
     { name = "sybil" },
 ]
@@ -1994,6 +2008,7 @@ docs = [
 test = [
     { name = "optional-dependencies", specifier = ">=0.3.2" },
     { name = "pytest", specifier = ">=6" },
+    { name = "pytest-arraydiff", specifier = ">=0.6.1" },
     { name = "pytest-cov", specifier = ">=3" },
     { name = "sybil", specifier = ">=9.1.0" },
 ]
