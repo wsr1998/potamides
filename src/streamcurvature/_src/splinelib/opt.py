@@ -23,7 +23,7 @@ from xmmutablemap import ImmutableMap
 
 from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
 
-from .funcs import speed, unit_curvature, unit_tangent
+from .funcs import principle_unit_normal, speed, unit_tangent
 
 
 @runtime_checkable
@@ -186,7 +186,7 @@ def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> 
     normals = jnp.stack([-That[:, 1], That[:, 0]], axis=1)  # shape (N, 2)
 
     # Unit curvature vectors
-    kappa_vecs = jax.vmap(unit_curvature, (None, 0))(spline, data_gamma)
+    kappa_vecs = jax.vmap(principle_unit_normal, (None, 0))(spline, data_gamma)
 
     # Signed curvature = projection of curvature vector onto normal
     signed_curvature = jnp.einsum("ij,ij->i", kappa_vecs, normals)

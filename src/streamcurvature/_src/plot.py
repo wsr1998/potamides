@@ -43,6 +43,11 @@ def get_angles(acc_xy_unit: SzN2, kappa_hat: SzN2) -> SzN:
         An array of angles in radians in the range (-pi, pi), with shape (N,).
 
     """
+    # Ensure the input vectors are unit vectors
+    acc_xy_unit = acc_xy_unit / jnp.linalg.norm(acc_xy_unit, axis=1, keepdims=True)
+    kappa_hat = kappa_hat / jnp.linalg.norm(kappa_hat, axis=1, keepdims=True)
+
+    # Calculate the angle using the dot product and cross product
     dot_product = jnp.einsum("ij,ij->i", acc_xy_unit, kappa_hat)
     cross_product = jnp.cross(acc_xy_unit, kappa_hat)
     return jnp.atan2(cross_product, dot_product)

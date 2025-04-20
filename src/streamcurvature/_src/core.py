@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from jaxtyping import Array, Real
 
 from . import splinelib
-from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN
+from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2
 
 log2pi = jnp.log(2 * jnp.pi)
 
@@ -73,7 +73,7 @@ class AbstractTrack:
     # -------------------------------------------
     # Positions
 
-    def __call__(self, gamma: SzN) -> Real[Array, "N F"]:
+    def __call__(self, gamma: SzN) -> Real[Array, "N 2"]:
         """Return the position at a given gamma.
 
         This is just evaluating the spline at the given gamma values.
@@ -87,9 +87,8 @@ class AbstractTrack:
         >>> import streamcurvature as sc
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
-        >>> x = 2 * jnp.cos(gamma)
-        >>> y = 2 * jnp.sin(gamma)
-        >>> track = sc.Track(gamma, jnp.stack([x, y], axis=-1))
+        >>> xy = 2  * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+        >>> track = sc.Track(gamma, xy)
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
         >>> print(track(gamma).round(2))
@@ -100,34 +99,52 @@ class AbstractTrack:
         """
         return self.ridge_line(gamma)
 
-    def positions(self, gamma: SzN) -> Real[Array, "N F"]:
+    def positions(self, gamma: SzN) -> SzN2:
         """Compute the position at a given gamma. See `__call__` for details."""
         return self(gamma)
+
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    @ft.partial(jax.jit)
+    def spherical_position(self, gamma: SzN, /) -> SzN2:
+        r"""Compute $|\vec{f}(gamma)|$ at `gamma`.
+
+        Examples
+        --------
+        >>> import jax
+        >>> import jax.numpy as jnp
+        >>> import interpax
+        >>> import streamcurvature.splinelib as splib
+
+        >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+        >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+        >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+        >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+        >>> r = jax.vmap(splib.spherical_position, (None, 0))(spline, gamma)
+        >>> print(r.round(4))
+        [[2.     0.    ]
+         [2.     1.5708]
+         [2.     3.1416]]
+
+        """
+        return splinelib.spherical_position(self.ridge_line, gamma)
 
     # -------------------------------------------
     # Tangents
 
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
-    @ft.partial(jax.jit, static_argnames=("forward",))
-    def tangent(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
+    @ft.partial(jax.jit)
+    def tangent(self, gamma: Sz0, /) -> Sz2:
         r"""Compute the tangent vector at a given position along the stream.
 
         The tangent vector is defined as:
 
-        $$
-            \frac{d\vec{x}}{d\gamma} =
-                \begin{bmatrix}
-                    \frac{dx}{d\gamma} \\ \frac{dy}{d\gamma}
-                \end{bmatrix}
-        $$
+        $$ T(\gamma) = \frac{d\vec{x}}{d\gamma} $$
 
         Parameters
         ----------
         gamma
-            The scalar gamma value at which to evaluate the spline.
-        forward
-            If `True`, compute forward tangents; otherwise, compute backward
-            tangents. Defaults to `True`.
+            The gamma value at which to evaluate the spline.
 
         Returns
         -------
@@ -155,58 +172,11 @@ class AbstractTrack:
          [ 0. -2.]]
 
         """
-        return splinelib.tangent(self.ridge_line, gamma, forward=forward)
-
-    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
-    @ft.partial(jax.jit, static_argnames=("forward",))
-    def unit_tangent(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
-        r"""Compute the unit tangent vector at a given position along the stream.
-
-        The unit tangent vector is defined as:
-
-        $$ \hat{\mathbf{T}} = \mathbf{T} / \|\mathbf{T}\| $$
-
-        Parameters
-        ----------
-        gamma
-            The gamma value at which to evaluate the spline.
-
-        forward
-            If `True`, compute forward tangents; otherwise, compute backward
-            tangents. Defaults to `True`.
-
-        Returns
-        -------
-        Array[real, (2,)]
-            The unit tangent vector at the specified position.
-
-        Examples
-        --------
-        Compute the unit tangent vector for specific points on the unit circle:
-
-        >>> import jax
-        >>> import jax.numpy as jnp
-        >>> import interpax
-        >>> import streamcurvature as sc
-
-        >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_00)
-        >>> x = jnp.cos(gamma)
-        >>> y = jnp.sin(gamma)
-        >>> track = sc.Track(gamma, jnp.stack([x, y], axis=-1))
-
-        >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
-        >>> unit_tangents = track.unit_tangent(gamma)
-        >>> print(unit_tangents.round(2))
-        [[ 0.  1.]
-         [-1.  0.]
-         [ 0. -1.]]
-
-        """
-        return splinelib.unit_tangent(self.ridge_line, gamma, forward=forward)
+        return splinelib.tangent(self.ridge_line, gamma)
 
     @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
-    @ft.partial(jax.jit, static_argnames=("forward",))
-    def state_speed(self, gamma: Sz0, /, *, forward: bool = True) -> Sz0:
+    @ft.partial(jax.jit)
+    def state_speed(self, gamma: Sz0, /) -> Sz0:
         r"""Return the speed in gamma of the track at a given position.
 
         This is the norm of the tangent vector at the given position.
@@ -252,13 +222,10 @@ class AbstractTrack:
         ----------
         gamma
             The gamma value at which to evaluate the spline.
-        forward
-            If `True`, compute using forward-mode differentiation; otherwise,
-            compute using backward-mode differentiation. Defaults to `True`.
 
         """
         # TODO: confirm that this equals L/2 for gamma \propto s
-        return splinelib.speed(self.ridge_line, gamma, forward=forward)
+        return splinelib.speed(self.ridge_line, gamma)
 
     # -------------------------------------------
     # Arc-length
@@ -269,7 +236,7 @@ class AbstractTrack:
         gamma0: LikeSz0 = -1,
         gamma1: LikeSz0 = 1,
         *,
-        method: Literal["p2p", "quad", "ode"] = "quad",
+        method: Literal["p2p", "quad", "ode"] = "p2p",
         method_kw: dict[str, Any] | None = None,
     ) -> Sz0:
         r"""Return the arc-length of the track.
@@ -292,7 +259,7 @@ class AbstractTrack:
 
         method
             The method to use for computing the arc-length. Options are "p2p",
-            "quad", or "ode". The default is "quad".
+            "quad", or "ode". The default is "p2p".
 
             - "p2p": point-to-point distance. This method computes the distance
                 between each pair of points along the track and sums them up.
@@ -319,58 +286,94 @@ class AbstractTrack:
         The method used is the default method, which is "quad".
 
         """
-        return self.arc_length(gamma0=-1, gamma1=1)
+        return self.arc_length(gamma0=self.gamma.min(), gamma1=self.gamma.max())
+
+    # -------------------------------------------
+    # Acceleration
+
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    @ft.partial(jax.jit)
+    def acceleration(self, gamma: Sz0, /) -> Sz2:
+        r"""Return the acceleration vector at a given position along the stream.
+
+        The acceleration vector is defined as: $ \frac{d^2\vec{x}}{d\gamma^2} $
+
+        Parameters
+        ----------
+        gamma
+            The gamma value at which to evaluate the acceleration.
+
+        Returns
+        -------
+        Array[float, (N, 2)]
+            The acceleration vector $\vec{a}$ at $\gamma$.
+
+        Examples
+        --------
+        >>> import jax
+        >>> import jax.numpy as jnp
+        >>> import streamcurvature as sc
+
+        >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+        >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+        >>> track = sc.Track(gamma, xy)
+
+        >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+        >>> acc = track.acceleration(gamma)
+        >>> print(acc.round(5))
+        [[-2. -0.]
+         [ 0. -2.]
+         [ 2. -0.]]
+
+        """
+        return splinelib.acceleration(self.ridge_line, gamma)
+
+    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
+    @ft.partial(jax.jit)
+    def principle_unit_normal(self, gamma: Sz0, /) -> Sz2:
+        r"""Return the unit normal vector at a given position along the stream.
+
+        The unit normal vector is defined as the normalized acceleration vector:
+
+        $$ \hat{N} = \frac{d^2\vec{x}/d\gamma^2}{\left\| d^2\vec{x}/d\gamma^2
+        \right\|} $$
+
+        Parameters
+        ----------
+        gamma
+            The gamma value at which to evaluate the normal vector.
+
+        Returns
+        -------
+        Array[float, (N, 2)]
+            The unit normal vector $\hat{N}$ at $\gamma$.
+
+        Examples
+        --------
+        >>> import jax
+        >>> import jax.numpy as jnp
+        >>> import streamcurvature as sc
+
+        >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+        >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+        >>> track = sc.Track(gamma, xy)
+
+        >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+        >>> Nhat = track.principle_unit_normal(gamma)
+        >>> print(Nhat.round(5))
+        [[-1.  0.]
+         [-0. -1.]
+         [ 1.  0.]]
+
+        """
+        return splinelib.principle_unit_normal(self.ridge_line, gamma)
 
     # -------------------------------------------
     # Curvature
 
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
-    @ft.partial(jax.jit, static_argnames=("forward",))
-    def dThat_dgamma(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
-        r"""Return the gamma derivative of the unit tangent vector.
-
-        .. note::
-
-            The following applies if $\gamma$ is proportional to the arc-length.
-
-        The derivative of the unit tangent vector with respect to $\gamma$ can
-        relate to the curvature vector. If $\gamma$ is defined as the arc-length
-        parameter, normalized to the range [-1, 1], then the derivative of the
-        unit tangent vector with respect to $\gamma$ is the scaled curvature
-        vector.
-
-        The curvature vector is defined as the derivative of the unit tangent
-        vector with respect to arc-length $s$:
-
-        $$ \frac{d\hat{T}}{ds} = \kappa \hat{N}, $$
-
-        where $\kappa$ is the curvature (its magnitude) and \hat{N} is the
-        principal unit normal vector.
-
-        If $\gamma$ is proportional to the arc-length, we can write
-
-        $$ \gamma = \frac{2s}{L} - 1, $$
-
-        where $L$ is the total arc-length of the stream. Then by the chain rule,
-        we have
-
-        $$ \frac{d\hat{T}}{d\gamma} = \frac{ds}{d\gamma} \frac{d\hat{T}}{ds}. $$
-
-        Because $\frac{ds}{d\gamma} = \frac{L}{2},$ and $\frac{d\hat{T}}{ds} =
-        \kappa\,\hat{N},$ it follows that
-
-        $$ \frac{d\hat{T}}{d\gamma} = \frac{L}{2} \kappa \hat{N} \propto \kappa
-        \hat{N}. $$
-
-        Therefore the derivative of the unit tangent vector with respect to
-        gamma is proportional to the curvature vector.
-
-        """
-        return splinelib.dThat_dgamma(self.ridge_line, gamma, forward=forward)
-
-    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
-    @ft.partial(jax.jit, static_argnames=("forward",))
-    def curvature(self, gamma: Sz0, /, *, forward: bool = True) -> Sz0:
+    @ft.partial(jax.jit)
+    def curvature(self, gamma: Sz0, /) -> Sz0:
         r"""Return the curvature at a given position along the stream.
 
         This method computes the curvature by taking the ratio of the gamma
@@ -402,38 +405,64 @@ class AbstractTrack:
         ----------
         gamma
             The gamma value at which to evaluate the curvature.
-        forward
-            If `True`, compute using forward-mode differentiation; otherwise,
-            compute using backward-mode differentiation. Defaults to `True`.
+
+        Returns
+        -------
+        Array[float, (N, 2)]
+            The curvature vector $\kappa$ at $\gamma$.
+
+        Examples
+        --------
+        >>> import jax
+        >>> import jax.numpy as jnp
+        >>> import streamcurvature as sc
+
+        >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+        >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+        >>> track = sc.Track(gamma, xy)
+
+        >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+        >>> kappa = track.curvature(gamma)
+        >>> print(kappa.round(5))
+        [[-0.5  0. ]
+         [-0.  -0.5]
+         [ 0.5  0. ]]
 
         """
-        return splinelib.curvature(self.ridge_line, gamma, forward=forward)
+        return splinelib.curvature(self.ridge_line, gamma)
 
-    @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
-    @ft.partial(jax.jit, static_argnames=("forward",))
-    def unit_curvature(self, gamma: Sz0, /, *, forward: bool = True) -> Sz2:
-        r"""Return the unit curvature vector.
+    @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
+    @ft.partial(jax.jit)
+    def kappa(self, gamma: Sz0, /) -> Sz0:
+        r"""Return the scalar curvature $\kappa(\gamma)$ along the track.
 
-        .. warning::
+        Parameters
+        ----------
+        gamma
+            The gamma value at which to evaluate the curvature.
 
-            This function assumes that the input gamma is proportional to the
-            arc-length. If this is not the case, the unit-curvature vector may
-            not be accurate.
+        Returns
+        -------
+        Array[float, (N, 2)]
+            The scalar curvature $\kappa$ at $\gamma$.
 
-        See ``Track.dThat_dgamma`` for the relationship between the
-        gamma-derivative of the unit-tangent vector and the curvature vector.
+        Examples
+        --------
+        >>> import jax
+        >>> import jax.numpy as jnp
+        >>> import streamcurvature as sc
 
-        For
+        >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+        >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+        >>> track = sc.Track(gamma, xy)
 
-        $$ \frac{d\hat{T}}{d\gamma} \propto \kappa \hat{N}, $$
-
-        where $\kappa \hat{N}$ is the curvature vector and $\hat{N}$ is the unit
-        normal vector (aka unit curvature vector), it follows that
-
-        $$ \hat{N} = \frac{\kappa \hat{N}}{\|\kappa \hat{N}\|}. $$
+        >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+        >>> kappa = track.kappa(gamma)
+        >>> print(kappa.round(5))
+        [0.5 0.5 0.5]
 
         """
-        return splinelib.unit_curvature(self.ridge_line, gamma, forward=forward)
+        return splinelib.kappa(self.ridge_line, gamma)
 
     # =====================================================
     # Plotting methods
@@ -473,13 +502,14 @@ class AbstractTrack:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
         points = self(gamma)
-        tangents_hat = self.unit_tangent(gamma)
+        T_hat = self.tangent(gamma)
+        T_hat = T_hat / jnp.linalg.norm(T_hat, axis=1, keepdims=True)
 
         ax.quiver(
             points[:, 0],
             points[:, 1],
-            tangents_hat[:, 0],
-            tangents_hat[:, 1],
+            T_hat[:, 0],
+            T_hat[:, 1],
             color=color,
             scale=vec_scale,
             label=label,
@@ -502,13 +532,14 @@ class AbstractTrack:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
         points = self(gamma)
-        curvature_hat = self.unit_curvature(gamma)
+        # kappa_vec points in the direction of Nhat
+        Nhat = self.principle_unit_normal(gamma)
 
         ax.quiver(
             points[:, 0],
             points[:, 1],
-            curvature_hat[:, 0],
-            curvature_hat[:, 1],
+            Nhat[:, 0],
+            Nhat[:, 1],
             color=color,
             scale=vec_scale,
             label=label,
@@ -655,7 +686,7 @@ class Track(AbstractTrack):
     def __init__(
         self,
         gamma: SzGamma | None = None,
-        data: SzGammaF | None = None,
+        knots: SzGammaF | None = None,
         /,
         *,
         ridge_line: interpax.Interpolator1D | None = None,
@@ -663,14 +694,14 @@ class Track(AbstractTrack):
         # Jax jit uses this branch
         if ridge_line is not None:
             spline = ridge_line
-            if gamma is not None or data is not None:
+            if gamma is not None or knots is not None:
                 msg = "gamma, data must be None when using the ridge_line kwarg."
                 raise ValueError(msg)
-        elif gamma is None or data is None:
+        elif gamma is None or knots is None:
             msg = "Either ridge_line or both gamma and data must be provided."
             raise ValueError(msg)
         else:
-            spline = interpax.Interpolator1D(gamma, data, method="cubic2")
+            spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
 
         object.__setattr__(self, "ridge_line", spline)
         self.__post_init__()

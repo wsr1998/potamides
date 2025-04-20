@@ -37,11 +37,20 @@ def pylint(session: nox.Session) -> None:
 
 @nox.session
 def tests(session: nox.Session) -> None:
-    """
-    Run the unit and regular tests.
-    """
-    session.install(".[test]")
+    """Run the unit and regular tests."""
+    session.run("uv", "sync", "--group", "test")
     session.run("pytest", *session.posargs)
+
+
+@nox.session
+def tests_generate_arraydiff(session: nox.Session) -> None:
+    """Generate the `pytest-arraydiff` files."""
+    session.run("uv", "sync", "--group", "test")
+    session.run(
+        "pytest",
+        "--arraydiff-generate-path=tests/data",
+        *session.posargs,
+    )
 
 
 @nox.session(reuse_venv=True)
