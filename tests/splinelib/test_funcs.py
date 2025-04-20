@@ -54,21 +54,21 @@ def test_position_consistency(
 
 
 @pytest.mark.array_compare
-def test_tangent_consistency(
+def test_spherical_position_consistency(
     spline: interpax.Interpolator1D, gamma: SzGamma
 ) -> SzGamma2:
-    r"""Test that the spline position function is consistent."""
-    out = jax.vmap(splib.tangent, (None, 0))(spline, gamma)
+    r"""Test that the spline spherical position function is consistent."""
+    out = jax.vmap(splib.spherical_position, (None, 0))(spline, gamma)
     assert out.shape == (len(gamma), 2)
     return out
 
 
 @pytest.mark.array_compare
-def test_unit_tangent_consistency(
+def test_tangent_consistency(
     spline: interpax.Interpolator1D, gamma: SzGamma
 ) -> SzGamma2:
-    r"""Test that the unit tangent function is consistent."""
-    out = jax.vmap(splib.unit_tangent, (None, 0))(spline, gamma)
+    r"""Test that the spline position function is consistent."""
+    out = jax.vmap(splib.tangent, (None, 0))(spline, gamma)
     assert out.shape == (len(gamma), 2)
     return out
 
@@ -122,11 +122,21 @@ def test_arc_length_consistency(
 
 
 @pytest.mark.array_compare
-def test_dThat_dgamma_consistency(
+def test_acceleration_consistency(
     spline: interpax.Interpolator1D, gamma: SzGamma
 ) -> SzGamma2:
-    r"""Test that the unit tangent function is consistent."""
-    out = jax.vmap(splib.dThat_dgamma, (None, 0))(spline, gamma)
+    r"""Test that the acceleration function is consistent."""
+    out = jax.vmap(splib.acceleration, (None, 0))(spline, gamma)
+    assert out.shape == (len(gamma), 2)
+    return out
+
+
+@pytest.mark.array_compare
+def test_principle_unit_normal_consistency(
+    spline: interpax.Interpolator1D, gamma: SzGamma
+) -> SzGamma2:
+    r"""Test that the principle unit normal function is consistent."""
+    out = jax.vmap(splib.principle_unit_normal, (None, 0))(spline, gamma)
     assert out.shape == (len(gamma), 2)
     return out
 
@@ -135,17 +145,15 @@ def test_dThat_dgamma_consistency(
 def test_curvature_consistency(
     spline: interpax.Interpolator1D, gamma: SzGamma
 ) -> SzGamma2:
-    r"""Test that the unit tangent function is consistent."""
+    r"""Test that the curvature function is consistent."""
     out = jax.vmap(splib.curvature, (None, 0))(spline, gamma)
     assert out.shape == (len(gamma), 2)
     return out
 
 
 @pytest.mark.array_compare
-def test_unit_curvature_consistency(
-    spline: interpax.Interpolator1D, gamma: SzGamma
-) -> SzGamma2:
-    r"""Test that the unit tangent function is consistent."""
-    out = jax.vmap(splib.unit_curvature, (None, 0))(spline, gamma)
-    assert out.shape == (len(gamma), 2)
+def test_kappa_consistency(spline: interpax.Interpolator1D, gamma: SzGamma) -> SzGamma2:
+    r"""Test that the kappa function is consistent."""
+    out = jax.vmap(splib.kappa, (None, 0))(spline, gamma)
+    assert out.shape == (len(gamma),)
     return out

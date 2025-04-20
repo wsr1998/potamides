@@ -1,57 +1,200 @@
 """Functional interface to `interpax.Interpolator1D`."""
 
-__all__ = [
+__all__ = [  # noqa: RUF022
+    # ---------
+    # Positions
+    "position",
+    "spherical_position",
+    # ---------
+    "tangent",
+    "speed",  # also differential arc-length
+    # ---------
     "arc_length",
     "arc_length_odeint",
     "arc_length_p2p",
     "arc_length_quadtrature",
+    # ---------
+    "acceleration",
+    "principle_unit_normal",
+    # ---------
     "curvature",
-    "dThat_dgamma",
-    "position",
-    "speed",
-    "tangent",
-    "unit_curvature",
-    "unit_tangent",
+    "kappa",
 ]
 
 import functools as ft
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 import interpax
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax.experimental.ode import odeint
-from jaxtyping import Array, Real
 
-from streamcurvature._src.custom_types import LikeSz0, Sz0, Sz2, SzN
+import streamcurvature._src.custom_types as ct
+from streamcurvature._src.custom_types import LikeSz0, Sz0
 
 from .data import point_to_point_distance
 
 
-def position(spline: interpax.Interpolator1D, gamma: SzN, /) -> Real[Array, "N F"]:
-    r"""Compute $\vec{f}(gamma)$ for `spline` $\vec{f}$ at `gamma`."""
+@ft.partial(jax.jit, inline=True)
+def position(spline: interpax.Interpolator1D, gamma: ct.SzN, /) -> ct.SzNF:
+    r"""Compute $\vec{x}(gamma)$ for `spline` $\vec{x}$ at `gamma`.
+
+    This is the Cartesian position vector at the given parameter values `gamma`.
+    The output is an array with shape `(N, F)`, where `N` is the number of input
+    `gamma` values and `F` is the number of dimensions of the spline.
+
+    Parameters
+    ----------
+    spline
+        The spline interpolator.
+    gamma
+        The gamma values at which to evaluate the spline. This can be a scalar
+        or an array of shape `(N,)`.
+
+    Returns
+    -------
+    Array[real, (N, F)]
+        The position vector $\vec{x}(\gamma)$ at the specified positions. The
+        shape is `(N, F)`, where `N` is the number of input `gamma` values and
+        `F` is the number of dimensions of the spline.
+
+    See Also
+    --------
+    `streamcurvature.Track.position`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
+
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+    >>> pos = jax.vmap(splib.position, (None, 0))(spline, gamma)
+    >>> print(pos.round(4))
+    [[ 1.  0.]
+     [ 0.  1.]
+     [-1.  0.]]
+
+    """
     return spline(gamma)
+
+
+# -------------------------------------------------------------------------
+# Spherical coordinates
+
+
+@ft.partial(jax.jit)
+def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
+    r"""Compute $|\vec{f}(gamma)|$ for `spline` $\vec{f}$ at `gamma`.
+
+    This is the spherical coordinate at the given parameter values `gamma`. The
+    output is an array with shape `(N, F)`, where `N` is the number of input
+    `gamma` values and `F` is the number of dimensions of the spline. The 0th
+    feature is the radius, and the remaining features are the angular
+    coordinates.
+
+    The radius is defined as the Euclidean norm of the position vector:
+
+    $$ r(\gamma) = \left\| \vec{x}(\gamma) \right\| $$
+
+    The angular coordinates are computed recursively using:
+
+    $$ \phi_i(\gamma) = \arctan2( R_{i+1}, x_i ), \quad \text{for } i = 0,
+    \dots, F-2 $$
+
+    where $R_{i+1} = \sqrt{\sum_{j=i+1}^{F-1} x_j^2}$ is the partial radius from
+    the $i$-th coordinate to the last coordinate.
+
+    The last angular coordinate is special-cased as it only depends on the last
+    two coordinates:
+
+    $$ \phi_{F-1}(\gamma) = \arctan2\left(x_F, x_{F-1}\right) $$
+
+    For more details, see https://en.wikipedia.org/wiki/N-sphere.
+
+    Parameters
+    ----------
+    spline
+        The spline interpolator.
+    gamma
+        The scalar gamma value at which to evaluate the spline.
+
+    Returns
+    -------
+    Array[real, (F,)]
+        The spherical coordinates at the specified position. The shape is
+        `(F,)`, where `F` is the number of dimensions of the spline. The 0th
+        feature is the radius, and the remaining features are the angular
+        coordinates. To evaluate the spherical coordinates at multiple
+        positions, use `jax.vmap`.
+
+    See Also
+    --------
+    `streamcurvature.Track.spherical_position`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
+
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+    >>> r = jax.vmap(splib.spherical_position, (None, 0))(spline, gamma)
+    >>> print(r.round(4))
+    [[2.     0.    ]
+     [2.     1.5708]
+     [2.     3.1416]]
+
+    """
+    assert gamma.ndim == 0
+
+    # Position vector at gamma.
+    x = spline(gamma)  # shape (F,)
+
+    # 1) radius
+    r = jnp.linalg.norm(x, axis=-1)
+
+    # 2) angular coordinates up to the second-to-last dimension.
+    # Compute partial radii: R[k] = sqrt(x_F^2 + ... + x_{k+1}^2)
+    R = jnp.sqrt(jnp.cumsum(jnp.square(x[1:])[::-1])[::-1])
+    # angles $\phi_i = atan2(R_{i+1}, x_i)$
+    phis = jnp.arctan2(R[:-1], x[:-2])
+    phif = jnp.arctan2(x[-1], x[-2])  # last angle is special case
+
+    # Pack the coordinates
+    xsph = jnp.empty_like(x)
+    xsph = xsph.at[0].set(r)  # set radius
+    xsph = xsph.at[1:-1].set(phis)  # set angles
+    xsph = xsph.at[-1].set(phif)  # set last angle
+    return xsph
 
 
 # ============================================================================
 # Tangent
 
 
-@ft.partial(jax.jit, static_argnames=("forward",))
-def tangent(
-    spline: interpax.Interpolator1D, gamma: Sz0, /, *, forward: bool = True
-) -> Sz2:
+@ft.partial(jax.jit, inline=True)
+def tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     r"""Compute the tangent vector at a given position along the stream.
 
     The tangent vector is defined as:
 
-    $$
-        \frac{d\vec{x}}{d\gamma} =
-            \begin{bmatrix}
-                \frac{dx}{d\gamma} \\ \frac{dy}{d\gamma}
-            \end{bmatrix}
-    $$
+    $$ T(\gamma) = \frac{d\vec{x}}{d\gamma} $$
 
     This function is scalar. To compute the unit tangent vector at multiple
     positions, use `jax.vmap`.
@@ -62,14 +205,11 @@ def tangent(
         The spline interpolator.
     gamma
         The scalar gamma value at which to evaluate the spline.
-
-    forward
-        If `True`, compute forward tangents; otherwise, compute backward
-        tangents. Defaults to `True`.
+        To evaluate the tangent vector at multiple positions, use `jax.vmap`.
 
     Returns
     -------
-    Array[real, (2,)]
+    Array[real, (F,)]
         The tangent vector at the specified position.
 
     See Also
@@ -80,17 +220,14 @@ def tangent(
 
     Examples
     --------
-    Compute the tangent vector for specific points on the unit circle:
-
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
     >>> import streamcurvature.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
-    >>> x = 2 * jnp.cos(gamma)
-    >>> y = 2 * jnp.sin(gamma)
-    >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1), method="cubic2")
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
 
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
     >>> tangents = jax.vmap(splib.tangent, (None, 0))(spline, gamma)
@@ -101,19 +238,17 @@ def tangent(
 
     """
     assert gamma.ndim == 0
-    jac_fn = jax.jacfwd if forward else jax.jacrev
-    return jac_fn(spline)(gamma)
+    return jax.jacfwd(spline)(gamma)
 
 
-@ft.partial(jax.jit, static_argnames=("forward",))
-def unit_tangent(
-    spline: interpax.Interpolator1D, gamma: Sz0, /, *, forward: bool = True
-) -> Sz2:
+# Private function
+@ft.partial(jax.jit, inline=True)
+def unit_tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     r"""Compute the unit tangent vector at a given position along the stream.
 
     The unit tangent vector is defined as:
 
-    $$ \hat{\mathbf{T}} = \mathbf{T} / \|\mathbf{T}\| $$
+    $$ \hat{\vec{T}} = \vec{T} / \|\vec{T}\| $$
 
     This function is scalar. To compute the unit tangent vector at multiple
     positions, use `jax.vmap`.
@@ -123,103 +258,79 @@ def unit_tangent(
     spline
         The spline interpolator.
     gamma
-        The scalar gamma value at which to evaluate the spline.
-
-    forward
-        If `True`, compute forward tangents; otherwise, compute backward
-        tangents. Defaults to `True`.
+        The scalar gamma value at which to evaluate the spline. To evaluate the
+        unit tangent vector at multiple positions, use `jax.vmap`.
 
     Returns
     -------
-    Array[real, (2,)]
+    Array[real, (F,)]
         The unit tangent vector at the specified position.
 
     See Also
     --------
-    `streamcurvature.Track.unit_tangent`
-        This method auto-vectorizes to support arbitrarily shaped `gamma`
-        inputs.
+    `streamcurvature.splinelib.tangent`
+        The non-unit tangent vector at the specified position.
 
     Examples
     --------
-    Compute the unit tangent vector for specific points on the unit circle:
-
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
-    >>> x = 2 * jnp.cos(gamma)
-    >>> y = 2 * jnp.sin(gamma)
-    >>> spline = interpax.Interpolator1D(gamma, jnp.stack([x, y], axis=-1), method="cubic2")
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
 
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
-    >>> unit_tangents = jax.vmap(splib.unit_tangent, (None, 0))(spline, gamma)
-    >>> print(unit_tangents.round(2))
+    >>> T_hat = jax.vmap(unit_tangent, (None, 0))(spline, gamma)
+    >>> print(T_hat.round(2))
     [[ 0.  1.]
      [-1.  0.]
      [ 0. -1.]]
 
     """
-    T = tangent(spline, gamma, forward=forward)
+    T = tangent(spline, gamma)
     return T / jnp.linalg.vector_norm(T)
 
 
-@ft.partial(jax.jit, static_argnames=("forward",))
-def speed(
-    spline: interpax.Interpolator1D, gamma: Sz0, /, *, forward: bool = True
-) -> Sz0:
+@ft.partial(jax.jit, inline=True)
+def speed(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     r"""Return the speed in gamma of the track at a given position.
 
     This is the norm of the tangent vector at the given position.
 
-    $$
-        \mathbf{v}(\gamma) = \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma}
-        \right\|
-    $$
+    $$ v(\gamma) = \| \frac{d\vec{x}(\gamma)}{d\gamma} \|
+                 = \|\vec{T}(\gamma) \| $$
 
-    An important note is that this is also equivalent to the derivative of
-    the arc-length with respect to gamma.
+    An important note is that this is also the differential arc-length!
 
-    On a 2D flat surface (the flat-sky approximation is reasonable for
-    observations of extragalactic stellar streams) the differential
-    arc-length is given by:
-
-    $$
-        s = \int_{\gamma_0}^{\gamma} \sqrt{\left(\frac{dx}{d\gamma}\right)^2
-            + \left(\frac{dy}{d\gamma}\right)^2} d\gamma.
-    $$
+    $$ s = \int_{\gamma_0}^{\gamma} \|\frac{\vec{x}}{d\gamma'}\| d\gamma'. $$
 
     Thus, the arc-length element is:
 
-    $$
-        \frac{ds}{d\gamma} = \sqrt{\left(\frac{dx}{d\gamma}\right)^2
-            + \left(\frac{dy}{d\gamma}\right)^2}
-    $$
+    $$ \frac{ds}{d\gamma} = \|\frac{\vec{x}}{d\gamma'}\| $$
 
-    If $\gamma$ is proportional to the arc-length, which is a very good and
-    common choice, then for $\gamma \in [-1, 1] = \frac{2s}{L} - 1$, we have
+    If we are working in 2D in the flat-sky approximation for extragalactic
+    streams, then it is recommended for $\gamma$ to be proportional to the
+    arc-length with $\gamma \in [-1, 1] = \frac{2s}{L} - 1$, we have
 
-    $$
-        \frac{ds}{d\gamma} = \frac{L}{2},
-    $$
+    $$ \frac{ds}{d\gamma} = \frac{L}{2}, $$
 
     where $L$ is the total arc-length of the stream.
-
-    Since this is a constant, there is no need to compute this function. It
-    is sufficient to just use $L/2$. This function is provided for
-    completeness.
 
     Parameters
     ----------
     spline
         The spline interpolator.
     gamma
-        The gamma value at which to evaluate the spline.
-    forward
-        If `True`, compute using forward-mode differentiation; otherwise,
-        compute using backward-mode differentiation. Defaults to `True`.
+        The scalar gamma value at which to evaluate the spline. To evaluate the
+        speed at multiple gammas, use `jax.vmap`.
+
+    Returns
+    -------
+    Array[real, (F,)]
+        The speed at the specified position. The shape is `(F,)`, where `F` is
+        the number of dimensions of the spline.
 
     See Also
     --------
@@ -227,10 +338,24 @@ def speed(
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+    >>> speed = jax.vmap(splib.speed, (None, 0))(spline, gamma)
+    >>> print(speed)  # see 2 in xy
+    [2. 2. 2.]
+
     """
-    # TODO: confirm that this equals L/2 for gamma \propto s
-    T = tangent(spline, gamma, forward=forward)
-    return jnp.linalg.vector_norm(T)
+    return jnp.linalg.vector_norm(tangent(spline, gamma))
 
 
 # ============================================================================
@@ -245,7 +370,7 @@ def arc_length_p2p(
     *,
     num: int = 100_000,
 ) -> Sz0:
-    """Compute the arc-length using point-to-point distance.
+    """Compute the arc-length using a point-to-point distance approximation.
 
     Parameters
     ----------
@@ -253,11 +378,37 @@ def arc_length_p2p(
         The spline interpolator.
     gamma0, gamma1
         The starting / ending gamma value between which to compute the
-        arc-length. The default is [-1, 1], which is the full range of gamma
-        for the track.
+        arc-length. The default is [-1, 1], which is the recommended range of
+        gamma for the track.
     num
-        The number of points to use for the quadrature. The default is
+        The integer number of points to use for the quadrature. The default is
         100,000.
+
+    See Also
+    --------
+    `streamcurvature.Track.arc_length`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs. It also allows for other methods of computing the arc-length.
+    `streamcurvature.splinelib.arc_length_quadtrature`
+        This method uses fixed quadrature to compute the integral. It is also
+        limited in accuracy by the number of points used.
+    `streamcurvature.splinelib.arc_length_odeint`
+        This method uses ODE integration to compute the integral.
+
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> s = splib.arc_length_p2p(spline, 0, 2 * jnp.pi) / jnp.pi
+    >>> print(s.round(5))
+    4.0
 
     """
     gammas = jnp.linspace(gamma0, gamma1, num, dtype=float)
@@ -282,11 +433,37 @@ def arc_length_quadtrature(
         The spline interpolator.
     gamma0, gamma1
         The starting / ending gamma value between which to compute the
-        arc-length. The default is [-1, 1], which is the full range of gamma
-        for the track.
+        arc-length. The default is [-1, 1], which is the full range of gamma for
+        the track.
     num
-        The number of points to use for the quadrature. The default is
-        100,000.
+        The number of points to use for the quadrature. The default is 100,000.
+
+    See Also
+    --------
+    `streamcurvature.Track.arc_length`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs. It also allows for other methods of computing the arc-length.
+    `streamcurvature.splinelib.arc_length_p2p`
+        This method computes the distance between each pair of points along the
+        track and sums them up. Accuracy is limited by the number of points
+        used.
+    `streamcurvature.splinelib.arc_length_odeint`
+        This method uses ODE integration to compute the integral.
+
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> s = splib.arc_length_quadtrature(spline, 0, 2 * jnp.pi, num=500_000) / jnp.pi
+    >>> print(s.round(4))  # harder to make accurate
+    4.0
 
     """
     gammas = jnp.linspace(gamma0, gamma1, num, dtype=float)
@@ -324,6 +501,34 @@ def arc_length_odeint(
         The maximum number of steps and maximum step size for the ODE
         solver. The default is inf.
 
+    See Also
+    --------
+    `streamcurvature.Track.arc_length`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs. It also allows for other methods of computing the arc-length.
+    `streamcurvature.splinelib.arc_length_p2p`
+        This method computes the distance between each pair of points along the
+        track and sums them up. Accuracy is limited by the number of points
+        used.
+    `streamcurvature.splinelib.arc_length_quadtrature`
+        This method uses fixed quadrature to compute the integral. It is also
+        limited in accuracy by the number of points used.
+
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> s = splib.arc_length_odeint(spline, 0, 2 * jnp.pi) / jnp.pi
+    >>> print(s.round(5))
+    4.0
+
     """
 
     @ft.partial(jax.jit)
@@ -340,13 +545,16 @@ def arc_length_odeint(
     return arc_length
 
 
+_ARC_LENGTH_METHODS: Final = ("p2p", "quad", "ode")
+
+
 @ft.partial(jax.jit, static_argnames=("method", "method_kw"))
 def arc_length(
     spline: interpax.Interpolator1D,
     gamma0: LikeSz0 = -1,
     gamma1: LikeSz0 = 1,
     *,
-    method: Literal["p2p", "quad", "ode"] = "quad",
+    method: Literal["p2p", "quad", "ode"] = "p2p",
     method_kw: dict[str, Any] | None = None,
 ) -> Sz0:
     r"""Return the arc-length of the track.
@@ -369,7 +577,7 @@ def arc_length(
 
     method
         The method to use for computing the arc-length. Options are "p2p",
-        "quad", or "ode". The default is "quad".
+        "quad", or "ode". The default is "p2p".
 
         - "p2p": point-to-point distance. This method computes the distance
             between each pair of points along the track and sums them up.
@@ -384,9 +592,42 @@ def arc_length(
     `streamcurvature.Track.arc_length`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
+    `streamcurvature.splinelib.arc_length_p2p`
+        This method computes the distance between each pair of points along the
+        track and sums them up. Accuracy is limited by the number of points
+        used. THis can be selected by setting `method="p2p"`.
+    `streamcurvature.splinelib.arc_length_quadtrature`
+        This method uses fixed quadrature to compute the integral. It is also
+        limited in accuracy by the number of points used. This can be selected
+        by setting `method="quad"`.
+    `streamcurvature.splinelib.arc_length_odeint`
+        This method uses ODE integration to compute the integral. This can be
+        selected by setting `method="ode"`.
+
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> s = splib.arc_length(spline, 0, 2 * jnp.pi) / jnp.pi
+    >>> print(s.round(5))
+    4.0
+
+    >>> s = splib.arc_length(spline, 0, 2 * jnp.pi, method="quad") / jnp.pi
+    >>> print(s.round(4))
+    4.0
+
+    >>> s = splib.arc_length(spline, 0, 2 * jnp.pi, method="ode") / jnp.pi
+    >>> print(s.round(5))
+    4.0
 
     """
-    methods = ("p2p", "quad", "ode")
     kw = method_kw if method_kw is not None else {}
     branches = [
         jtu.Partial(arc_length_p2p, **kw),
@@ -394,71 +635,134 @@ def arc_length(
         jtu.Partial(arc_length_odeint, **kw),
     ]
     operands = (spline, gamma0, gamma1)
-    return jax.lax.switch(methods.index(method), branches, *operands)
+    return jax.lax.switch(_ARC_LENGTH_METHODS.index(method), branches, *operands)
+
+
+# ============================================================================
+# Acceleration
+
+
+@ft.partial(jax.jit, inline=True)
+def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
+    r"""Compute the acceleration vector $\vec{a} = d^2\vec{x}/d\gamma^2$.
+
+    This is the second derivative of the spline position with respect to the
+    curve parameter $\gamma$. Equivalently, it's the derivative of the
+    tangent vector:
+
+    $$
+      \vec{a}(\gamma)
+      = \frac{d^2\vec{x}}{d\gamma^2}
+      = \frac{d}{d\gamma} (\frac{d\vec{x}}{d\gamma}).
+    $$
+
+    Parameters
+    ----------
+    spline : interpax.Interpolator1D
+        A twice-differentiable 1D spline for $\vec{x}(\gamma)$.
+    gamma : float
+        The scalar parameter value at which to compute the acceleration.
+
+    Returns
+    -------
+    Array[float, (F,)]
+        The acceleration vector $\frac{d^2\vec{x}}{d\gamma^2}$ of length F,
+        where F is the spatial dimension of the spline.
+
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> from streamcurvature.splinelib import acceleration
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+    >>> acc = jax.vmap(acceleration, in_axes=(None, 0))(spline, gamma)
+    >>> print(acc.round(5))
+    [[-2. -0.]
+     [ 0. -2.]
+     [ 2. -0.]]
+
+    """
+    return jax.jacfwd(tangent, argnums=1)(spline, gamma)
+
+
+@ft.partial(jax.jit)
+def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
+    r"""Return the unit normal vector $\hat{N}(\gamma)$ along the spline.
+
+    The unit normal vector is defined as the projection of the acceleration
+    vector onto the plane orthogonal to the unit tangent vector, divided by its
+    norm:
+
+    $$ \hat{N}(\gamma) = \frac{d\hat{T}/d\gamma}{|d\hat{T}/d\gamma|}. $$
+
+    where $\hat{T}(\gamma)$ is the unit tangent vector at $\gamma$ and
+    $\vec{a}(\gamma)$ is the acceleration vector at $\gamma$. This function is
+    scalar. To compute the unit normal vector at multiple positions, use
+    `jax.vmap`.
+
+    Parameters
+    ----------
+    spline
+        The spline interpolator.
+    gamma
+        The scalar gamma value at which to evaluate the unit normal vector. To
+        evaluate the unit normal vector at multiple positions, use `jax.vmap`.
+
+    Returns
+    -------
+    Array[real, (F,)]
+        The unit normal vector at the specified position. The shape is `(F,)`,
+        where `F` is the number of dimensions of the spline.
+
+    See Also
+    --------
+    `streamcurvature.Track.principle_unit_normal`
+        This method auto-vectorizes to support arbitrarily shaped `gamma`
+        inputs.
+
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+    >>> N_hat = jax.vmap(splib.principle_unit_normal, in_axes=(None, 0))(spline, gamma)
+    >>> print(N_hat.round(5))
+    [[-1.  0.]
+     [-0. -1.]
+     [ 1.  0.]]
+
+    """
+    # unit tangent and acceleration
+    That = unit_tangent(spline, gamma)  # shape (F,)
+    a = acceleration(spline, gamma)  # shape (F,)
+
+    # project out the tangential part
+    a_perp = a - jnp.dot(a, That) * That  # shape (F,)
+
+    # normalize to get the unit normal
+    return a_perp / jnp.linalg.norm(a_perp)  # shape (F,)
 
 
 # ============================================================================
 # Curvature
 
 
-@ft.partial(jax.jit, static_argnames=("forward",))
-def dThat_dgamma(
-    spline: interpax.Interpolator1D, gamma: Sz0, /, *, forward: bool = True
-) -> Sz2:
-    r"""Return the gamma derivative of the unit tangent vector.
-
-    .. note::
-
-        The following applies if $\gamma$ is proportional to the arc-length.
-
-    The derivative of the unit tangent vector with respect to $\gamma$ can
-    relate to the curvature vector. If $\gamma$ is defined as the arc-length
-    parameter, normalized to the range [-1, 1], then the derivative of the
-    unit tangent vector with respect to $\gamma$ is the scaled curvature
-    vector.
-
-    The curvature vector is defined as the derivative of the unit tangent
-    vector with respect to arc-length $s$:
-
-    $$ \frac{d\hat{T}}{ds} = \kappa \hat{N}, $$
-
-    where $\kappa$ is the curvature (its magnitude) and \hat{N} is the
-    principal unit normal vector.
-
-    If $\gamma$ is proportional to the arc-length, we can write
-
-    $$ \gamma = \frac{2s}{L} - 1, $$
-
-    where $L$ is the total arc-length of the stream. Then by the chain rule,
-    we have
-
-    $$ \frac{d\hat{T}}{d\gamma} = \frac{ds}{d\gamma} \frac{d\hat{T}}{ds}. $$
-
-    Because $\frac{ds}{d\gamma} = \frac{L}{2},$ and $\frac{d\hat{T}}{ds} =
-    \kappa\,\hat{N},$ it follows that
-
-    $$ \frac{d\hat{T}}{d\gamma} = \frac{L}{2} \kappa \hat{N} \propto \kappa
-    \hat{N}. $$
-
-    Therefore the derivative of the unit tangent vector with respect to
-    gamma is proportional to the curvature vector.
-
-    See Also
-    --------
-    `streamcurvature.Track.dThat_dgamma`
-        This method auto-vectorizes to support arbitrarily shaped `gamma`
-        inputs.
-
-    """
-    jac_fn = jax.jacfwd if forward else jax.jacrev
-    return jac_fn(unit_tangent, argnums=1)(spline, gamma, forward=forward)
-
-
-@ft.partial(jax.jit, static_argnames=("forward",))
-def curvature(
-    spline: interpax.Interpolator1D, gamma: Sz0, /, *, forward: bool = True
-) -> Sz0:
-    r"""Return the curvature at a given position along the stream.
+@ft.partial(jax.jit)
+def curvature(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
+    r"""Return the curvature vector at a given position along the stream.
 
     This method computes the curvature by taking the ratio of the gamma
     derivative of the unit tangent vector to the derivative of the
@@ -491,9 +795,6 @@ def curvature(
         The spline interpolator.
     gamma
         The gamma value at which to evaluate the curvature.
-    forward
-        If `True`, compute using forward-mode differentiation; otherwise,
-        compute using backward-mode differentiation. Defaults to `True`.
 
     See Also
     --------
@@ -501,43 +802,63 @@ def curvature(
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+    >>> kappa_vec = jax.vmap(splib.curvature, (None, 0))(spline, gamma)
+    >>> print(kappa_vec.round(5))
+    [[-0.5  0. ]
+     [-0.  -0.5]
+     [ 0.5  0. ]]
+
     """
-    # FIXME: double check it's dThat_dgamma
-    dThat = dThat_dgamma(spline, gamma, forward=forward)
-    ds = speed(spline, gamma, forward=forward)
-    return dThat / ds
+    dThat_dgamma = jax.jacfwd(unit_tangent, argnums=1)(spline, gamma)
+    ds_dgamma = speed(spline, gamma)
+    return dThat_dgamma / ds_dgamma
 
 
-@ft.partial(jax.jit, static_argnames=("forward",))
-def unit_curvature(
-    spline: interpax.Interpolator1D, gamma: Sz0, /, *, forward: bool = True
-) -> Sz2:
-    r"""Return the unit curvature vector.
+@ft.partial(jax.jit)
+def kappa(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.Sz0:
+    r"""Return the curvature magnitude at a given position along the stream.
 
-    .. warning::
-
-        This function assumes that the input gamma is proportional to the
-        arc-length. If this is not the case, the unit-curvature vector may
-        not be accurate.
-
-    See ``Track.dThat_dgamma`` for the relationship between the
-    gamma-derivative of the unit-tangent vector and the curvature vector.
-
-    For
-
-    $$ \frac{d\hat{T}}{d\gamma} \propto \kappa \hat{N}, $$
-
-    where $\kappa \hat{N}$ is the curvature vector and $\hat{N}$ is the unit
-    normal vector (aka unit curvature vector), it follows that
-
-    $$ \hat{N} = \frac{\kappa \hat{N}}{\|\kappa \hat{N}\|}. $$
+    Parameters
+    ----------
+    spline
+        The spline interpolator.
+    gamma
+        The gamma value at which to evaluate the curvature.
 
     See Also
     --------
-    `streamcurvature.Track.unit_curvature`
+    `streamcurvature.Track.kappa`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
+    Examples
+    --------
+    >>> import jax
+    >>> import jax.numpy as jnp
+    >>> import interpax
+    >>> import streamcurvature.splinelib as splib
+
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+
+    >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
+    >>> kappa_val = jax.vmap(splib.kappa, (None, 0))(spline, gamma)
+    >>> print(kappa_val.round(5))  # circles have constant curvature
+    [0.5 0.5 0.5]
+
     """
-    kappa = curvature(spline, gamma, forward=forward)
-    return kappa / jnp.linalg.vector_norm(kappa)
+    kappa_vec = curvature(spline, gamma)
+    return jnp.linalg.vector_norm(kappa_vec)

@@ -8,16 +8,17 @@ __all__ = [  # noqa: RUF022
     "point_to_point_distance",
     # Functions
     "position",
+    "spherical_position",
     "tangent",
-    "unit_tangent",
     "speed",
     "arc_length_p2p",
     "arc_length_quadtrature",
     "arc_length_odeint",
     "arc_length",
-    "dThat_dgamma",
+    "acceleration",
+    "principle_unit_normal",
     "curvature",
-    "unit_curvature",
+    "kappa",
     # Optimizing splines
     "reduce_point_density",
     "CostFn",
@@ -38,17 +39,18 @@ from .data import (
     point_to_point_distance,
 )
 from .funcs import (
+    acceleration,
     arc_length,
     arc_length_odeint,
     arc_length_p2p,
     arc_length_quadtrature,
     curvature,
-    dThat_dgamma,
+    kappa,
     position,
+    principle_unit_normal,
     speed,
+    spherical_position,
     tangent,
-    unit_curvature,
-    unit_tangent,
 )
 from .opt import (
     CostFn,
