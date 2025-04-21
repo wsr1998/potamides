@@ -321,9 +321,9 @@ class AbstractTrack:
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
         >>> acc = track.acceleration(gamma)
         >>> print(acc.round(5))
-        [[-2. -0.]
+        [[-2.  0.]
          [ 0. -2.]
-         [ 2. -0.]]
+         [ 2.  0.]]
 
         """
         return splinelib.acceleration(self.ridge_line, gamma)
@@ -362,7 +362,7 @@ class AbstractTrack:
         >>> Nhat = track.principle_unit_normal(gamma)
         >>> print(Nhat.round(5))
         [[-1.  0.]
-         [-0. -1.]
+         [ 0. -1.]
          [ 1.  0.]]
 
         """
@@ -425,7 +425,7 @@ class AbstractTrack:
         >>> kappa = track.curvature(gamma)
         >>> print(kappa.round(5))
         [[-0.5  0. ]
-         [-0.  -0.5]
+         [ 0.  -0.5]
          [ 0.5  0. ]]
 
         """

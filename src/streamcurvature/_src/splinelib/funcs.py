@@ -683,9 +683,9 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
     >>> acc = jax.vmap(acceleration, in_axes=(None, 0))(spline, gamma)
     >>> print(acc.round(5))
-    [[-2. -0.]
+    [[-2.  0.]
      [ 0. -2.]
-     [ 2. -0.]]
+     [ 2.  0.]]
 
     """
     return jax.jacfwd(tangent, argnums=1)(spline, gamma)
@@ -741,7 +741,7 @@ def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> 
     >>> N_hat = jax.vmap(splib.principle_unit_normal, in_axes=(None, 0))(spline, gamma)
     >>> print(N_hat.round(5))
     [[-1.  0.]
-     [-0. -1.]
+     [ 0. -1.]
      [ 1.  0.]]
 
     """
@@ -817,7 +817,7 @@ def curvature(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     >>> kappa_vec = jax.vmap(splib.curvature, (None, 0))(spline, gamma)
     >>> print(kappa_vec.round(5))
     [[-0.5  0. ]
-     [-0.  -0.5]
+     [ 0.  -0.5]
      [ 0.5  0. ]]
 
     """

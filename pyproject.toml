@@ -194,6 +194,7 @@
       "EXE002",  # executable file missing shebang
       "F722",    # reason: ruff doesn't like jaxtyping annotations
       "F821",    # Undefined name. reason: jaxtyping annotations
+      "PD",      # Pandas
       "PLR09",   # Too many <...>
       "PLR2004", # Magic value used in comparison
       "RET504",  # Unnecessary assignment before `return` statement

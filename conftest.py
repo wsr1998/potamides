@@ -1,5 +1,6 @@
 """Doctest configuration."""
 
+import builtins
 from doctest import ELLIPSIS, NORMALIZE_WHITESPACE
 from typing import Any
 
@@ -11,6 +12,34 @@ from sybil.parsers import myst, rest
 from sybil.sybil import SybilCollection
 
 jax.config.update("jax_enable_x64", True)
+
+###########################################################
+# Pytest fixtures
+
+
+def _custom_repr(x: Any, /) -> Any:
+    if isinstance(x, jax.Array):
+        x = x.copy()
+        x = x.at[x == 0].set(np.zeros((), dtype=x.dtype))
+    return x
+
+
+@pytest.fixture(scope="session")
+def normalize_negative_zero():
+    """
+    Ensure that -0.0 is displayed as 0.0 in all jax output.
+    Applied automatically to all tests, including doctests.
+    """
+    orig_print = builtins.print
+
+    def _custom_print(*args: Any, **kwargs: Any) -> None:
+        new_args = [_custom_repr(a) for a in args]
+        return orig_print(*new_args, **kwargs)
+
+    builtins.print = _custom_print
+    yield
+    builtins.print = orig_print
+
 
 ###########################################################
 # Sybil Doctest Configuration
@@ -31,6 +60,7 @@ python = Sybil(  # TODO: get working with myst parsers
         rest.SkipParser(),
     ],
     patterns=["*.py"],
+    fixtures=["normalize_negative_zero"],
 )
 rst_docs = Sybil(  # TODO: deprecate
     parsers=[
@@ -38,7 +68,8 @@ rst_docs = Sybil(  # TODO: deprecate
         rest.PythonCodeBlockParser(),
         rest.SkipParser(),
     ],
-    patterns=["*.rst", "*.py"],
+    patterns=["*.rst"],
+    fixtures=["normalize_negative_zero"],
 )
 
 pytest_collect_file = SybilCollection((docs, python, rst_docs)).pytest()
