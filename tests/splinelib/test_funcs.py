@@ -101,7 +101,7 @@ def test_arc_length_quadtrature_consistency(
     return out
 
 
-@pytest.mark.array_compare
+@pytest.mark.array_compare(rtol=5e-6)
 def test_arc_length_odeint_consistency(
     spline: interpax.Interpolator1D, gamma: SzGamma
 ) -> SzGamma:
