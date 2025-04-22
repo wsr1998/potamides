@@ -180,7 +180,20 @@ def data_distance_cost_fn(
 
 @ft.partial(jax.jit)
 def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> Sz0:
-    """Cost function to penalize changes in curvature."""
+    """Cost function to penalize changes in curvature.
+
+    Parameters
+    ----------
+    knots
+        Output values of spline at gamma -- e.g. x, y values.
+    gamma
+        The gamma values at which the spline is anchored. There are N of these,
+        one per `knots`. These are fixed while the `knots` are optimized.
+        These should be from the same distribution as `data_gamma`.
+    data_gamma
+        gamma of the target data.
+
+    """
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
 
     num_points = 10_000
@@ -202,12 +215,7 @@ def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> 
 
 
 @ft.partial(jax.jit)
-def _no_concavity_change_cost_fn(
-    knots: SzN2,  # noqa: ARG001
-    gamma: SzN,  # noqa: ARG001
-    /,
-    data_gamma: SzData,  # noqa: ARG001
-) -> Sz0:
+def _no_concavity_change_cost_fn(*_: Any) -> Sz0:
     """Return 0.0."""
     return jnp.zeros(())
 
@@ -221,7 +229,7 @@ def default_cost_fn(
     /,
     *,
     sigmas: float = 1.0,
-    lambda_concavity: float = 0.0,
+    concavity_weight: float = 0.0,
 ) -> Sz0:
     """Cost function to minimize that compares data to spline fit.
 
@@ -233,6 +241,7 @@ def default_cost_fn(
     gamma:
         The gamma values at which the spline is anchored. There are N of these,
         one per `knots`. These are fixed while the `knots` are optimized.
+        These should be from the same distribution as `data_gamma`.
 
     data_gamma:
         gamma of the target data.
@@ -241,7 +250,7 @@ def default_cost_fn(
 
     sigmas:
         The uncertainty on each datum in `data_y`.
-    lambda_concavity
+    concavity_weight
         The weight of the curvature penalization term. This should be tuned
         based on the desired smoothness of the spline. Default is `0.0`.
 
@@ -249,8 +258,8 @@ def default_cost_fn(
     data_cost = data_distance_cost_fn(knots, gamma, data_gamma, data_y, sigmas=sigmas)
 
     # Optionally add a penalization for changes in concavity
-    curvature_cost = jax.lax.cond(
-        lambda_concavity > 0,
+    delta_concavity_cost = jax.lax.cond(
+        concavity_weight > 0,
         concavity_change_cost_fn,
         _no_concavity_change_cost_fn,
         knots,
@@ -258,7 +267,7 @@ def default_cost_fn(
         data_gamma,
     )
 
-    return data_cost + lambda_concavity * curvature_cost
+    return data_cost + concavity_weight * delta_concavity_cost
 
 
 DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
@@ -313,7 +322,7 @@ def optimize_spline_knots(
     cost_kwargs
         Additional keyword arguments to pass to the cost function. E.g.
         `data_distance_cost_fn` can take 'sigmas' and `concavity_change_cost_fn` can
-        take `lambda_concavity`. `default_cost_fn` can take both. JAX treats
+        take `concavity_weight`. `default_cost_fn` can take both. JAX treats
         these as static.
     fixed_mask
         A mask that indicates which knots are fixed. If `None` then all knots
