@@ -150,7 +150,6 @@
       "galax.*",
       "interpax.*",
       "jax.*",
-      "jaxopt.*",
       "jaxtyping.*",
       "matplotlib.*",
       "numpy.*",

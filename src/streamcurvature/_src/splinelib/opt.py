@@ -17,6 +17,7 @@ import equinox as eqx
 import interpax
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
 from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Real
@@ -25,6 +26,8 @@ from xmmutablemap import ImmutableMap
 from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
 
 from .funcs import kappa, speed
+
+SzK2: TypeAlias = Real[Array, "K 2"]
 
 
 @runtime_checkable
@@ -152,7 +155,7 @@ def data_distance_cost_fn(
     Parameters
     ----------
     knots
-        Output values of spline at gamma -- e.g. x or y values.
+        Output values of spline at gamma -- e.g. x, y values.
     gamma
         The gamma values at which the spline is anchored. There are N of these,
         one per `knots`. These are fixed while the `knots` are optimized.
@@ -262,7 +265,11 @@ DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
 StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
 
 
-@ft.partial(eqx.filter_jit)
+@ft.partial(
+    jax.jit,
+    static_argnums=(0,),
+    static_argnames=("cost_kwargs", "optimizer", "nsteps", "fixed_mask"),
+)
 def optimize_spline_knots(
     cost_fn: CostFn,
     /,
@@ -273,6 +280,7 @@ def optimize_spline_knots(
     cost_kwargs: ImmutableMap[str, Any] | None = None,
     optimizer: optax.GradientTransformation = DEFAULT_OPTIMIZER,
     nsteps: int = 10_000,
+    fixed_mask: tuple[bool, ...] | None = None,
 ) -> SzN2:
     """Optimize spline knots to fit data.
 
@@ -307,6 +315,15 @@ def optimize_spline_knots(
         `data_distance_cost_fn` can take 'sigmas' and `concavity_change_cost_fn` can
         take `lambda_concavity`. `default_cost_fn` can take both. JAX treats
         these as static.
+    fixed_mask
+        A mask that indicates which knots are fixed. If `None` then all knots
+        are free to be optimized. If a mask is provided then the knots at the
+        indices where the mask is `True` are fixed and the knots at the indices
+        where the mask is `False` are free to be optimized. The fixed knots
+        are not optimized and are not included in the cost function. This is
+        useful if you want to optimize only a subset of the knots while
+        keeping the others fixed. The mask should be the same length as
+        `init_knots`. The fixed knots are reconstructed in the final output.
 
     optimizer
         The optimizer to use. Defaults to Adam with a learning rate of 1e-3.
@@ -316,12 +333,34 @@ def optimize_spline_knots(
     """
     cost_kw = {} if cost_kwargs is None else cost_kwargs
 
+    # Determine fixed/free indices using fixed_mask argument
+    if fixed_mask is not None:
+        fixed_mask_ = np.array(fixed_mask, dtype=bool)
+        (fixed_idx,) = np.nonzero(fixed_mask_)
+        (free_idx,) = np.nonzero(~fixed_mask_)
+
+        fixed_knots = init_knots[fixed_idx]
+        free_knots_init = init_knots[free_idx]
+
+        def reconstruct_knots(free_knots: SzK2) -> SzK2:
+            out = jnp.empty_like(init_knots)
+            out = out.at[fixed_idx].set(fixed_knots)
+            out = out.at[free_idx].set(free_knots)
+            return out
+    else:
+        free_knots_init = init_knots
+
+        def reconstruct_knots(free_knots: SzK2) -> SzK2:
+            return free_knots
+
+    # The loss function is the cost function, reconstructed with the free knots.
     @ft.partial(jax.jit)
     def loss_fn(params: SzN2) -> Sz0:
-        return cost_fn(params, init_gamma, *cost_args, **cost_kw)
+        knots = reconstruct_knots(params)
+        return cost_fn(knots, init_gamma, *cost_args, **cost_kw)
 
-    # Choose an optimizer: Adam or SGD.
-    opt_state = optimizer.init(init_knots)
+    # Choose an optimizer: e.g. Adam or SGD.
+    opt_state = optimizer.init(free_knots_init)
 
     # Define a single optimization step.
     @ft.partial(jax.jit)
@@ -335,9 +374,10 @@ def optimize_spline_knots(
 
     # Run the optimization using jax.lax.scan.
     (final_params, _), _ = jax.lax.scan(
-        step_fn, (init_knots, opt_state), None, length=nsteps
+        step_fn, (free_knots_init, opt_state), None, length=nsteps
     )
-    return final_params
+    # Reconstruct the full set of knots (with fixed if needed)
+    return reconstruct_knots(final_params)
 
 
 @ft.partial(jax.jit, static_argnames=("nknots",))
