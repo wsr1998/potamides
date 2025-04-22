@@ -1,13 +1,13 @@
 """Spline-related tools."""
 
-__all__ = [  # noqa: RUF022
-    "reduce_point_density",
+__all__ = [
     "CostFn",
-    "data_distance_cost_fn",
     "concavity_change_cost_fn",
+    "data_distance_cost_fn",
     "default_cost_fn",
-    "optimize_spline_knots",
     "new_gamma_knots_from_spline",
+    "optimize_spline_knots",
+    "reduce_point_density",
 ]
 
 import functools as ft
@@ -18,12 +18,13 @@ import interpax
 import jax
 import jax.numpy as jnp
 import optax
+from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Real
 from xmmutablemap import ImmutableMap
 
 from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
 
-from .funcs import principle_unit_normal, speed, unit_tangent
+from .funcs import kappa, speed
 
 
 @runtime_checkable
@@ -179,26 +180,19 @@ def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> 
     """Cost function to penalize changes in curvature."""
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
 
-    # Tangent vectors
-    That = jax.vmap(unit_tangent, (None, 0))(spline, data_gamma)
+    num_points = 10_000
+    gamma0, gamma1 = data_gamma.min(), data_gamma.max()
+    gammas = jnp.linspace(gamma0, gamma1, num=num_points)
+    dgamma = (gamma1 - gamma0) / (num_points - 1)
 
-    # Normal vectors: rotate tangent 90° counterclockwise
-    normals = jnp.stack([-That[:, 1], That[:, 0]], axis=1)  # shape (N, 2)
+    kappa_dgamma_fn = jax.vmap(jax.grad(kappa, argnums=1), in_axes=(None, 0))
+    dkappa_dgamma = kappa_dgamma_fn(spline, gammas)
+    speeds = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)  # ds/dgamma
+    dkappa_ds = dkappa_dgamma / speeds
 
-    # Unit curvature vectors
-    kappa_vecs = jax.vmap(principle_unit_normal, (None, 0))(spline, data_gamma)
-
-    # Signed curvature = projection of curvature vector onto normal
-    signed_curvature = jnp.einsum("ij,ij->i", kappa_vecs, normals)
-
-    # Tanh approximation to sign flip count
-    L = 100.0
-    sign_approx = jnp.tanh(L * signed_curvature)
-
-    # count the number of sign flips in the approximation.
-    sign_flip_cost = jnp.sum((jnp.diff(sign_approx)) ** 2)
-
-    return sign_flip_cost
+    # Cost: \int (dkappa/ds)^2 ds
+    integrand = dkappa_ds**2
+    return trapezoid(integrand, dx=dgamma)
 
 
 # -------------------------------------
@@ -268,9 +262,6 @@ DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
 StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
 
 
-# @ft.partial(
-#     jax.jit, static_argnums=(0,), static_argnames=("cost_kwargs", "optimizer", "nsteps")
-# )
 @ft.partial(eqx.filter_jit)
 def optimize_spline_knots(
     cost_fn: CostFn,
