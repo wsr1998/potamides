@@ -194,12 +194,18 @@ def signed_kappa_scalar(spline: interpax.Interpolator1D, g: Sz0) -> Sz0:
 
 
 @ft.partial(jax.jit)
-def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> Sz0:
+def concavity_change_cost_fn(
+    knots: SzN2, gamma: SzN, /, data_gamma: SzData, epsilon: float = 1e-2
+) -> Sz0:
     """Cost function to penalize changes in signed curvature for 2D curves.
 
-    Penalizes the squared derivative of the signed curvature along the curve.
-    The signed curvature is computed as the dot product of the curvature vector
-    with the 90° rotated unit tangent (left-handed normal).
+    Penalize
+
+    $$ \left( \frac{d}{ds}
+    \atan\left(\frac{\kappa_{\text{signed}}(s)}{\epsilon}\right) \right)^2 $$
+
+    where $\kappa_{\text{signed}}(s)$ is the signed curvature at $s$ and
+    $\epsilon$ is a small number that controls the width of the smoothing.
 
     Parameters
     ----------
@@ -207,10 +213,13 @@ def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> 
         Output values of spline at gamma -- e.g. x, y values.
     gamma
         The gamma values at which the spline is anchored. There are N of these,
-        one per `knots`. These are fixed while the `knots` are optimized.
-        These should be from the same distribution as `data_gamma`.
+        one per `knots`. These are fixed while the `knots` are optimized. These
+        should be from the same distribution as `data_gamma`.
     data_gamma
         gamma of the target data.
+
+    epsilon
+        Smoothing width.
     """
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
 
@@ -219,14 +228,17 @@ def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> 
     gammas = jnp.linspace(gamma0, gamma1, num=num_points)
     dgamma = (gamma1 - gamma0) / (num_points - 1)
 
-    # Compute d(signed_kappa)/ds
-    ds_dgamma = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)
-    dkappa_dgamma_fn = jax.grad(signed_kappa_scalar, argnums=1)
-    dkappa_dgamma = jax.vmap(dkappa_dgamma_fn, (None, 0))(spline, gammas)
-    dkappa_ds = dkappa_dgamma / ds_dgamma
+    # Smooth sign indicator
+    def smooth_sign_fn(g: Sz0) -> Sz0:
+        return jnp.arctan(signed_kappa_scalar(spline, g) / epsilon)
 
-    # Integrate squared derivative of signed curvature
-    integrand = dkappa_ds**2
+    # Compute arclength derivative of atan(kappa / eps)
+    ds_dgamma = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)
+    d_smooth_sign_dgamma = jax.vmap(jax.grad(smooth_sign_fn))(gammas)
+    d_smooth_sign_ds = d_smooth_sign_dgamma / ds_dgamma
+
+    # Cost: penalize sign flips
+    integrand = d_smooth_sign_ds**2
     return trapezoid(integrand, dx=dgamma)
 
 
@@ -284,6 +296,7 @@ def default_cost_fn(
         knots,
         gamma,
         data_gamma,
+        1e-2,
     )
 
     return data_cost + concavity_weight * delta_concavity_cost
