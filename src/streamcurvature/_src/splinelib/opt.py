@@ -25,7 +25,7 @@ from xmmutablemap import ImmutableMap
 
 from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
 
-from .funcs import kappa, speed
+from .funcs import curvature, speed, unit_tangent
 
 SzK2: TypeAlias = Real[Array, "K 2"]
 
@@ -179,8 +179,27 @@ def data_distance_cost_fn(
 
 
 @ft.partial(jax.jit)
+def signed_kappa_scalar(spline: interpax.Interpolator1D, g: Sz0) -> Sz0:
+    """Signed curvature at a point on the spline.
+
+    The signed curvature is a concept which only makes sense for 2D curves. It
+    is the dot product of the curvature vector with the 90° rotated unit tangent
+    (left-handed normal).
+
+    """
+    t = unit_tangent(spline, g)
+    n = jnp.array([-t[1], t[0]])  # left-handed normal
+    k = curvature(spline, g)
+    return jnp.dot(k, n)
+
+
+@ft.partial(jax.jit)
 def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> Sz0:
-    """Cost function to penalize changes in curvature.
+    """Cost function to penalize changes in signed curvature for 2D curves.
+
+    Penalizes the squared derivative of the signed curvature along the curve.
+    The signed curvature is computed as the dot product of the curvature vector
+    with the 90° rotated unit tangent (left-handed normal).
 
     Parameters
     ----------
@@ -192,7 +211,6 @@ def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> 
         These should be from the same distribution as `data_gamma`.
     data_gamma
         gamma of the target data.
-
     """
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
 
@@ -201,12 +219,13 @@ def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> 
     gammas = jnp.linspace(gamma0, gamma1, num=num_points)
     dgamma = (gamma1 - gamma0) / (num_points - 1)
 
-    kappa_dgamma_fn = jax.vmap(jax.grad(kappa, argnums=1), in_axes=(None, 0))
-    dkappa_dgamma = kappa_dgamma_fn(spline, gammas)
-    speeds = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)  # ds/dgamma
-    dkappa_ds = dkappa_dgamma / speeds
+    # Compute d(signed_kappa)/ds
+    ds_dgamma = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)
+    dkappa_dgamma_fn = jax.grad(signed_kappa_scalar, argnums=1)
+    dkappa_dgamma = jax.vmap(dkappa_dgamma_fn, (None, 0))(spline, gammas)
+    dkappa_ds = dkappa_dgamma / ds_dgamma
 
-    # Cost: \int (dkappa/ds)^2 ds
+    # Integrate squared derivative of signed curvature
     integrand = dkappa_ds**2
     return trapezoid(integrand, dx=dgamma)
 
