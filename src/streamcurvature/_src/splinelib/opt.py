@@ -172,7 +172,7 @@ def data_distance_cost_fn(
     # Compute the cost of the distance from the spline from the data
     spl = interpax.Interpolator1D(gamma, knots, method="cubic2")
     data_cost = jnp.sum(((data_y - spl(data_gamma)) / sigmas) ** 2)
-    return data_cost
+    return data_cost / data_gamma.shape[0]
 
 
 # -------------------------------------
@@ -193,9 +193,15 @@ def signed_kappa_scalar(spline: interpax.Interpolator1D, g: Sz0) -> Sz0:
     return jnp.dot(k, n)
 
 
+# TODO: speed up a lot
 @ft.partial(jax.jit)
 def concavity_change_cost_fn(
-    knots: SzN2, gamma: SzN, /, data_gamma: SzData, epsilon: float = 1e-2
+    knots: SzN2,
+    gamma: SzN,
+    /,
+    data_gamma: SzData,
+    epsilon: float = 1e-2,
+    num_points: int = 1_000,
 ) -> Sz0:
     """Cost function to penalize changes in signed curvature for 2D curves.
 
@@ -220,10 +226,12 @@ def concavity_change_cost_fn(
 
     epsilon
         Smoothing width.
+    num_points
+        The number of points to use to compute the cost function. This should be
+        large enough to capture the curvature of the spline. Default is 1_000.
     """
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
 
-    num_points = 10_000
     gamma0, gamma1 = data_gamma.min(), data_gamma.max()
     gammas = jnp.linspace(gamma0, gamma1, num=num_points)
     dgamma = (gamma1 - gamma0) / (num_points - 1)
@@ -260,6 +268,7 @@ def default_cost_fn(
     /,
     *,
     sigmas: float = 1.0,
+    data_weight: float = 1e3,  # enlarge gradients for GD.
     concavity_weight: float = 0.0,
 ) -> Sz0:
     """Cost function to minimize that compares data to spline fit.
@@ -299,7 +308,7 @@ def default_cost_fn(
         1e-2,
     )
 
-    return data_cost + concavity_weight * delta_concavity_cost
+    return data_weight * data_cost + concavity_weight * delta_concavity_cost
 
 
 DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
