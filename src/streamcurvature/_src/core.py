@@ -6,7 +6,7 @@ __all__ = [
 ]
 
 import functools as ft
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any, Literal, final
 
 import equinox as eqx
@@ -16,7 +16,7 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import matplotlib.pyplot as plt
-from jaxtyping import Array, Real
+from jaxtyping import Array, Bool, Real
 
 from . import splinelib
 from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2
@@ -24,6 +24,7 @@ from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2
 log2pi = jnp.log(2 * jnp.pi)
 
 
+@dataclass(frozen=True, slots=True, eq=False)
 class AbstractTrack:
     r"""ABC for track classes.
 
@@ -49,9 +50,9 @@ class AbstractTrack:
 
     """
 
-    def __post_init__(self) -> None:
-        self.ridge_line: interpax.Interpolator1D
+    ridge_line: interpax.Interpolator1D
 
+    def __post_init__(self) -> None:
         _ = eqx.error_if(
             self.ridge_line,
             self.ridge_line.method != "cubic2",
@@ -465,6 +466,23 @@ class AbstractTrack:
         return splinelib.kappa(self.ridge_line, gamma)
 
     # =====================================================
+
+    def __eq__(self, other: object) -> Bool[Array, ""]:
+        """Check if two tracks are equal."""
+        if not isinstance(other, AbstractTrack):
+            return NotImplemented
+
+        all_fields = [
+            (
+                jnp.all(getattr(self, f.name) == getattr(other, f.name))
+                if hasattr(other, f.name)
+                else False
+            )
+            for f in fields(self)
+        ]
+        return jnp.all(jnp.array(all_fields))
+
+    # =====================================================
     # Plotting methods
 
     def plot_track(
@@ -675,7 +693,7 @@ class AbstractTrack:
 
 @final
 @ft.partial(jtu.register_dataclass, data_fields=["ridge_line"], meta_fields=[])
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False)
 class Track(AbstractTrack):
     """A track with data and a spline."""
 
