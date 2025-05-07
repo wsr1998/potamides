@@ -154,6 +154,7 @@ def compute_ln_likelihood(
 
 
 @ft.partial(jnp.vectorize, signature="(n),(n),(n)->()")
+@ft.partial(jax.jit)
 def combine_ln_likelihoods(
     lnliks: Real[Array, "S"],
     /,
