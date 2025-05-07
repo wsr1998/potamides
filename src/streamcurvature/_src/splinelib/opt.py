@@ -205,13 +205,16 @@ def concavity_change_cost_fn(
 ) -> Sz0:
     r"""Cost function to penalize changes in signed curvature for 2D curves.
 
-    Penalize
+    The integrand of the cost function is the derivative of the arctangent of
+    the signed curvature divided by a small number $\epsilon$.
 
     $$ \left( \frac{d}{ds}
     \atan\left(\frac{\kappa_{\text{signed}}(s)}{\epsilon}\right) \right)^2 $$
 
     where $\kappa_{\text{signed}}(s)$ is the signed curvature at $s$ and
-    $\epsilon$ is a small number that controls the width of the smoothing.
+    $\epsilon$ is a small number that controls the width of the smoothing. The
+    $\atan$ function differentiably mimics the undifferetiable $\text{sign}$
+    function. The cost is the integral over the arc-length.
 
     Parameters
     ----------
@@ -232,6 +235,7 @@ def concavity_change_cost_fn(
     """
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
 
+    # Compute the range and step size of the gamma values for integration
     gamma0, gamma1 = data_gamma.min(), data_gamma.max()
     gammas = jnp.linspace(gamma0, gamma1, num=num_points)
     dgamma = (gamma1 - gamma0) / (num_points - 1)
@@ -240,14 +244,13 @@ def concavity_change_cost_fn(
     def smooth_sign_fn(g: Sz0) -> Sz0:
         return jnp.arctan(signed_kappa_scalar(spline, g) / epsilon)
 
-    # Compute arclength derivative of atan(kappa / eps)
+    # Compute arclength derivative of the smooth sign indicator
     ds_dgamma = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)
     d_smooth_sign_dgamma = jax.vmap(jax.grad(smooth_sign_fn))(gammas)
     d_smooth_sign_ds = d_smooth_sign_dgamma / ds_dgamma
 
     # Cost: penalize sign flips
-    integrand = d_smooth_sign_ds**2
-    return trapezoid(integrand, dx=dgamma)
+    return trapezoid(d_smooth_sign_ds**2, dx=dgamma)
 
 
 # -------------------------------------
