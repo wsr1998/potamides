@@ -203,7 +203,7 @@ def concavity_change_cost_fn(
     epsilon: float = 1e-2,
     num_points: int = 1_000,
 ) -> Sz0:
-    """Cost function to penalize changes in signed curvature for 2D curves.
+    r"""Cost function to penalize changes in signed curvature for 2D curves.
 
     Penalize
 
