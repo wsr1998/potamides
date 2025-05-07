@@ -15,7 +15,7 @@ __all__: list[str] = []
 from typing import TypeAlias
 
 import unxt as u
-from jaxtyping import Array, Real
+from jaxtyping import Array, Bool, Real
 
 Sz0: TypeAlias = Real[Array, ""]
 LikeSz0: TypeAlias = Real[Array, ""] | float | int
@@ -36,3 +36,5 @@ SzDataF: TypeAlias = Real[Array, "data F"]
 SzGamma: TypeAlias = Real[Array, "gamma"]
 SzGamma2: TypeAlias = Real[Array, "gamma 2"]
 SzGammaF: TypeAlias = Real[Array, "gamma F"]
+
+BoolSzGamma: TypeAlias = Bool[Array, "gamma"]

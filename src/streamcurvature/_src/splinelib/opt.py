@@ -1,13 +1,13 @@
 """Spline-related tools."""
 
-__all__ = [  # noqa: RUF022
-    "reduce_point_density",
+__all__ = [
     "CostFn",
-    "data_distance_cost_fn",
     "concavity_change_cost_fn",
+    "data_distance_cost_fn",
     "default_cost_fn",
-    "optimize_spline_knots",
     "new_gamma_knots_from_spline",
+    "optimize_spline_knots",
+    "reduce_point_density",
 ]
 
 import functools as ft
@@ -17,13 +17,17 @@ import equinox as eqx
 import interpax
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
+from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Real
 from xmmutablemap import ImmutableMap
 
 from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
 
-from .funcs import principle_unit_normal, speed, unit_tangent
+from .funcs import curvature, speed, unit_tangent
+
+SzK2: TypeAlias = Real[Array, "K 2"]
 
 
 @runtime_checkable
@@ -151,7 +155,7 @@ def data_distance_cost_fn(
     Parameters
     ----------
     knots
-        Output values of spline at gamma -- e.g. x or y values.
+        Output values of spline at gamma -- e.g. x, y values.
     gamma
         The gamma values at which the spline is anchored. There are N of these,
         one per `knots`. These are fixed while the `knots` are optimized.
@@ -168,49 +172,92 @@ def data_distance_cost_fn(
     # Compute the cost of the distance from the spline from the data
     spl = interpax.Interpolator1D(gamma, knots, method="cubic2")
     data_cost = jnp.sum(((data_y - spl(data_gamma)) / sigmas) ** 2)
-    return data_cost
+    return data_cost / data_gamma.shape[0]
 
 
 # -------------------------------------
 
 
 @ft.partial(jax.jit)
-def concavity_change_cost_fn(knots: SzN2, gamma: SzN, /, data_gamma: SzData) -> Sz0:
-    """Cost function to penalize changes in curvature."""
+def signed_kappa_scalar(spline: interpax.Interpolator1D, g: Sz0) -> Sz0:
+    """Signed curvature at a point on the spline.
+
+    The signed curvature is a concept which only makes sense for 2D curves. It
+    is the dot product of the curvature vector with the 90° rotated unit tangent
+    (left-handed normal).
+
+    """
+    t = unit_tangent(spline, g)
+    n = jnp.array([-t[1], t[0]])  # left-handed normal
+    k = curvature(spline, g)
+    return jnp.dot(k, n)
+
+
+# TODO: speed up a lot
+@ft.partial(jax.jit)
+def concavity_change_cost_fn(
+    knots: SzN2,
+    gamma: SzN,
+    /,
+    data_gamma: SzData,
+    epsilon: float = 1e-2,
+    num_points: int = 1_000,
+) -> Sz0:
+    r"""Cost function to penalize changes in signed curvature for 2D curves.
+
+    The integrand of the cost function is the derivative of the arctangent of
+    the signed curvature divided by a small number $\epsilon$.
+
+    $$ \left( \frac{d}{ds}
+    \atan\left(\frac{\kappa_{\text{signed}}(s)}{\epsilon}\right) \right)^2 $$
+
+    where $\kappa_{\text{signed}}(s)$ is the signed curvature at $s$ and
+    $\epsilon$ is a small number that controls the width of the smoothing. The
+    $\atan$ function differentiably mimics the undifferetiable $\text{sign}$
+    function. The cost is the integral over the arc-length.
+
+    Parameters
+    ----------
+    knots
+        Output values of spline at gamma -- e.g. x, y values.
+    gamma
+        The gamma values at which the spline is anchored. There are N of these,
+        one per `knots`. These are fixed while the `knots` are optimized. These
+        should be from the same distribution as `data_gamma`.
+    data_gamma
+        gamma of the target data.
+
+    epsilon
+        Smoothing width.
+    num_points
+        The number of points to use to compute the cost function. This should be
+        large enough to capture the curvature of the spline. Default is 1_000.
+    """
     spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
 
-    # Tangent vectors
-    That = jax.vmap(unit_tangent, (None, 0))(spline, data_gamma)
+    # Compute the range and step size of the gamma values for integration
+    gamma0, gamma1 = data_gamma.min(), data_gamma.max()
+    gammas = jnp.linspace(gamma0, gamma1, num=num_points)
+    dgamma = (gamma1 - gamma0) / (num_points - 1)
 
-    # Normal vectors: rotate tangent 90° counterclockwise
-    normals = jnp.stack([-That[:, 1], That[:, 0]], axis=1)  # shape (N, 2)
+    # Smooth sign indicator
+    def smooth_sign_fn(g: Sz0) -> Sz0:
+        return jnp.arctan(signed_kappa_scalar(spline, g) / epsilon)
 
-    # Unit curvature vectors
-    kappa_vecs = jax.vmap(principle_unit_normal, (None, 0))(spline, data_gamma)
+    # Compute arclength derivative of the smooth sign indicator
+    ds_dgamma = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)
+    d_smooth_sign_dgamma = jax.vmap(jax.grad(smooth_sign_fn))(gammas)
+    d_smooth_sign_ds = d_smooth_sign_dgamma / ds_dgamma
 
-    # Signed curvature = projection of curvature vector onto normal
-    signed_curvature = jnp.einsum("ij,ij->i", kappa_vecs, normals)
-
-    # Tanh approximation to sign flip count
-    L = 100.0
-    sign_approx = jnp.tanh(L * signed_curvature)
-
-    # count the number of sign flips in the approximation.
-    sign_flip_cost = jnp.sum((jnp.diff(sign_approx)) ** 2)
-
-    return sign_flip_cost
+    # Cost: penalize sign flips
+    return trapezoid(d_smooth_sign_ds**2, dx=dgamma)
 
 
 # -------------------------------------
 
 
 @ft.partial(jax.jit)
-def _no_concavity_change_cost_fn(
-    knots: SzN2,  # noqa: ARG001
-    gamma: SzN,  # noqa: ARG001
-    /,
-    data_gamma: SzData,  # noqa: ARG001
-) -> Sz0:
+def _no_concavity_change_cost_fn(*_: Any) -> Sz0:
     """Return 0.0."""
     return jnp.zeros(())
 
@@ -224,7 +271,8 @@ def default_cost_fn(
     /,
     *,
     sigmas: float = 1.0,
-    lambda_concavity: float = 0.0,
+    data_weight: float = 1e3,  # enlarge gradients for GD.
+    concavity_weight: float = 0.0,
 ) -> Sz0:
     """Cost function to minimize that compares data to spline fit.
 
@@ -236,6 +284,7 @@ def default_cost_fn(
     gamma:
         The gamma values at which the spline is anchored. There are N of these,
         one per `knots`. These are fixed while the `knots` are optimized.
+        These should be from the same distribution as `data_gamma`.
 
     data_gamma:
         gamma of the target data.
@@ -244,7 +293,7 @@ def default_cost_fn(
 
     sigmas:
         The uncertainty on each datum in `data_y`.
-    lambda_concavity
+    concavity_weight
         The weight of the curvature penalization term. This should be tuned
         based on the desired smoothness of the spline. Default is `0.0`.
 
@@ -252,26 +301,28 @@ def default_cost_fn(
     data_cost = data_distance_cost_fn(knots, gamma, data_gamma, data_y, sigmas=sigmas)
 
     # Optionally add a penalization for changes in concavity
-    curvature_cost = jax.lax.cond(
-        lambda_concavity > 0,
+    delta_concavity_cost = jax.lax.cond(
+        concavity_weight > 0,
         concavity_change_cost_fn,
         _no_concavity_change_cost_fn,
         knots,
         gamma,
         data_gamma,
+        1e-2,
     )
 
-    return data_cost + lambda_concavity * curvature_cost
+    return data_weight * data_cost + concavity_weight * delta_concavity_cost
 
 
 DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
 StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
 
 
-# @ft.partial(
-#     jax.jit, static_argnums=(0,), static_argnames=("cost_kwargs", "optimizer", "nsteps")
-# )
-@ft.partial(eqx.filter_jit)
+@ft.partial(
+    jax.jit,
+    static_argnums=(0,),
+    static_argnames=("cost_kwargs", "optimizer", "nsteps", "fixed_mask"),
+)
 def optimize_spline_knots(
     cost_fn: CostFn,
     /,
@@ -282,6 +333,7 @@ def optimize_spline_knots(
     cost_kwargs: ImmutableMap[str, Any] | None = None,
     optimizer: optax.GradientTransformation = DEFAULT_OPTIMIZER,
     nsteps: int = 10_000,
+    fixed_mask: tuple[bool, ...] | None = None,
 ) -> SzN2:
     """Optimize spline knots to fit data.
 
@@ -314,8 +366,17 @@ def optimize_spline_knots(
     cost_kwargs
         Additional keyword arguments to pass to the cost function. E.g.
         `data_distance_cost_fn` can take 'sigmas' and `concavity_change_cost_fn` can
-        take `lambda_concavity`. `default_cost_fn` can take both. JAX treats
+        take `concavity_weight`. `default_cost_fn` can take both. JAX treats
         these as static.
+    fixed_mask
+        A mask that indicates which knots are fixed. If `None` then all knots
+        are free to be optimized. If a mask is provided then the knots at the
+        indices where the mask is `True` are fixed and the knots at the indices
+        where the mask is `False` are free to be optimized. The fixed knots
+        are not optimized and are not included in the cost function. This is
+        useful if you want to optimize only a subset of the knots while
+        keeping the others fixed. The mask should be the same length as
+        `init_knots`. The fixed knots are reconstructed in the final output.
 
     optimizer
         The optimizer to use. Defaults to Adam with a learning rate of 1e-3.
@@ -325,12 +386,34 @@ def optimize_spline_knots(
     """
     cost_kw = {} if cost_kwargs is None else cost_kwargs
 
+    # Determine fixed/free indices using fixed_mask argument
+    if fixed_mask is not None:
+        fixed_mask_ = np.array(fixed_mask, dtype=bool)
+        (fixed_idx,) = np.nonzero(fixed_mask_)
+        (free_idx,) = np.nonzero(~fixed_mask_)
+
+        fixed_knots = init_knots[fixed_idx]
+        free_knots_init = init_knots[free_idx]
+
+        def reconstruct_knots(free_knots: SzK2) -> SzK2:
+            out = jnp.empty_like(init_knots)
+            out = out.at[fixed_idx].set(fixed_knots)
+            out = out.at[free_idx].set(free_knots)
+            return out
+    else:
+        free_knots_init = init_knots
+
+        def reconstruct_knots(free_knots: SzK2) -> SzK2:
+            return free_knots
+
+    # The loss function is the cost function, reconstructed with the free knots.
     @ft.partial(jax.jit)
     def loss_fn(params: SzN2) -> Sz0:
-        return cost_fn(params, init_gamma, *cost_args, **cost_kw)
+        knots = reconstruct_knots(params)
+        return cost_fn(knots, init_gamma, *cost_args, **cost_kw)
 
-    # Choose an optimizer: Adam or SGD.
-    opt_state = optimizer.init(init_knots)
+    # Choose an optimizer: e.g. Adam or SGD.
+    opt_state = optimizer.init(free_knots_init)
 
     # Define a single optimization step.
     @ft.partial(jax.jit)
@@ -344,9 +427,10 @@ def optimize_spline_knots(
 
     # Run the optimization using jax.lax.scan.
     (final_params, _), _ = jax.lax.scan(
-        step_fn, (init_knots, opt_state), None, length=nsteps
+        step_fn, (free_knots_init, opt_state), None, length=nsteps
     )
-    return final_params
+    # Reconstruct the full set of knots (with fixed if needed)
+    return reconstruct_knots(final_params)
 
 
 @ft.partial(jax.jit, static_argnames=("nknots",))

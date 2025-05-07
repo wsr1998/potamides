@@ -8,9 +8,9 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from jax import lax
-from jaxtyping import Array, Bool, Int, Real
+from jaxtyping import Array, Int, Real
 
-from .custom_types import Sz0, SzGamma2
+from .custom_types import BoolSzGamma, Sz0, SzGamma2
 
 log2pi = jnp.log(2 * jnp.pi)
 
@@ -27,7 +27,7 @@ def compute_ln_lik_curved(
 def compute_lnlik_good(
     kappa_hat: SzGamma2,
     acc_xy_unit: SzGamma2,
-    where_straight: Bool[Array, "gamma"],
+    where_straight: BoolSzGamma,
     f1_logf1: Sz0,
     f2_logf2: Sz0,
     f3_logf3: Sz0,
@@ -68,7 +68,7 @@ def compute_lnlik_bad(*_: Any) -> Sz0:
 def compute_ln_likelihood(
     kappa_hat: SzGamma2,
     acc_xy_unit: SzGamma2,
-    where_straight: Bool[Array, "gamma"] | None = None,
+    where_straight: BoolSzGamma | None = None,
     *,
     sigma_theta: float = jnp.deg2rad(10.0),
 ) -> Sz0:
@@ -154,6 +154,7 @@ def compute_ln_likelihood(
 
 
 @ft.partial(jnp.vectorize, signature="(n),(n),(n)->()")
+@ft.partial(jax.jit)
 def combine_ln_likelihoods(
     lnliks: Real[Array, "S"],
     /,

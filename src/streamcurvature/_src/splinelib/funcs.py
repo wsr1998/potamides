@@ -691,6 +691,10 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     return jax.jacfwd(tangent, argnums=1)(spline, gamma)
 
 
+# ============================================================================
+# Curvature
+
+
 @ft.partial(jax.jit)
 def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     r"""Return the unit normal vector $\hat{N}(\gamma)$ along the spline.
@@ -744,20 +748,11 @@ def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> 
      [ 0. -1.]
      [ 1.  0.]]
 
+    We can reverse the direction of the track by reversing the order of the
+
     """
-    # unit tangent and acceleration
-    That = unit_tangent(spline, gamma)  # shape (F,)
-    a = acceleration(spline, gamma)  # shape (F,)
-
-    # project out the tangential part
-    a_perp = a - jnp.dot(a, That) * That  # shape (F,)
-
-    # normalize to get the unit normal
-    return a_perp / jnp.linalg.norm(a_perp)  # shape (F,)
-
-
-# ============================================================================
-# Curvature
+    dThat_dgamma = jax.jacfwd(unit_tangent, argnums=1)(spline, gamma)
+    return dThat_dgamma / jnp.linalg.vector_norm(dThat_dgamma)
 
 
 @ft.partial(jax.jit)
