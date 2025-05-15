@@ -417,6 +417,9 @@ def arc_length_p2p(
     return jnp.sum(d_p2p)
 
 
+speed_fn = jax.vmap(speed, in_axes=(None, 0))
+
+
 @ft.partial(jax.jit, static_argnames=("num"))
 def arc_length_quadtrature(
     spline: interpax.Interpolator1D,
@@ -467,7 +470,7 @@ def arc_length_quadtrature(
 
     """
     gammas = jnp.linspace(gamma0, gamma1, num, dtype=float)
-    speeds = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)
+    speeds = speed_fn(spline, gammas)
     dgamma = (gamma1 - gamma0) / (num - 1)
     return jnp.sum(speeds) * dgamma
 

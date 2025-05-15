@@ -19,7 +19,7 @@ from jaxtyping import Array, Bool, Real
 
 Sz0: TypeAlias = Real[Array, ""]
 LikeSz0: TypeAlias = Real[Array, ""] | float | int
-LikeQorVSz0: TypeAlias = Real[u.Quantity, ""] | LikeSz0
+LikeQorVSz0: TypeAlias = Real[u.AbstractQuantity, ""] | LikeSz0
 Sz2: TypeAlias = Real[Array, "2"]
 SzF: TypeAlias = Real[Array, "F"]
 SzN: TypeAlias = Real[Array, "N"]

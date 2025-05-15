@@ -25,7 +25,7 @@ def _custom_repr(x: Any, /) -> Any:
 
 
 @pytest.fixture(scope="session")
-def normalize_negative_zero():
+def _normalize_negative_zero() -> None:
     """
     Ensure that -0.0 is displayed as 0.0 in all jax output.
     Applied automatically to all tests, including doctests.
@@ -60,7 +60,7 @@ python = Sybil(  # TODO: get working with myst parsers
         rest.SkipParser(),
     ],
     patterns=["*.py"],
-    fixtures=["normalize_negative_zero"],
+    fixtures=["_normalize_negative_zero"],
 )
 rst_docs = Sybil(  # TODO: deprecate
     parsers=[
@@ -69,7 +69,7 @@ rst_docs = Sybil(  # TODO: deprecate
         rest.SkipParser(),
     ],
     patterns=["*.rst"],
-    fixtures=["normalize_negative_zero"],
+    fixtures=["_normalize_negative_zero"],
 )
 
 pytest_collect_file = SybilCollection((docs, python, rst_docs)).pytest()
