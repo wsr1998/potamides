@@ -11,6 +11,7 @@ __all__ = [
 ]
 
 import functools as ft
+from collections.abc import Callable
 from typing import Any, Protocol, TypeAlias, runtime_checkable
 
 import equinox as eqx
@@ -28,6 +29,8 @@ from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
 from .funcs import curvature, speed, unit_tangent
 
 SzK2: TypeAlias = Real[Array, "K 2"]
+
+speed_vec_fn = jax.vmap(speed, in_axes=(None, 0))
 
 
 @runtime_checkable
@@ -200,19 +203,19 @@ def concavity_change_cost_fn(
     gamma: SzN,
     /,
     data_gamma: SzData,
-    epsilon: float = 1e-2,
+    scale: float = 1e2,
     num_points: int = 1_000,
 ) -> Sz0:
     r"""Cost function to penalize changes in signed curvature for 2D curves.
 
     The integrand of the cost function is the derivative of the arctangent of
-    the signed curvature divided by a small number $\epsilon$.
+    the signed curvature multiplied by a large number $\lambda$.
 
-    $$ \left( \frac{d}{ds}
-    \atan\left(\frac{\kappa_{\text{signed}}(s)}{\epsilon}\right) \right)^2 $$
+    $$ \left( \frac{d}{ds} \atan\left(\lambda \kappa_{\text{signed}}(s)\right)
+    \right)^2 $$
 
     where $\kappa_{\text{signed}}(s)$ is the signed curvature at $s$ and
-    $\epsilon$ is a small number that controls the width of the smoothing. The
+    $\lambda$ is a large number that controls the width of the smoothing. The
     $\atan$ function differentiably mimics the undifferetiable $\text{sign}$
     function. The cost is the integral over the arc-length.
 
@@ -227,8 +230,8 @@ def concavity_change_cost_fn(
     data_gamma
         gamma of the target data.
 
-    epsilon
-        Smoothing width.
+    scale
+        Inverse Smoothing width.
     num_points
         The number of points to use to compute the cost function. This should be
         large enough to capture the curvature of the spline. Default is 1_000.
@@ -242,10 +245,10 @@ def concavity_change_cost_fn(
 
     # Smooth sign indicator
     def smooth_sign_fn(g: Sz0) -> Sz0:
-        return jnp.arctan(signed_kappa_scalar(spline, g) / epsilon)
+        return jnp.arctan(signed_kappa_scalar(spline, g) * scale)
 
     # Compute arclength derivative of the smooth sign indicator
-    ds_dgamma = jax.vmap(speed, in_axes=(None, 0))(spline, gammas)
+    ds_dgamma = speed_vec_fn(spline, gammas)
     d_smooth_sign_dgamma = jax.vmap(jax.grad(smooth_sign_fn))(gammas)
     d_smooth_sign_ds = d_smooth_sign_dgamma / ds_dgamma
 
@@ -273,6 +276,7 @@ def default_cost_fn(
     sigmas: float = 1.0,
     data_weight: float = 1e3,  # enlarge gradients for GD.
     concavity_weight: float = 0.0,
+    concavity_scale: float = 1e2,
 ) -> Sz0:
     """Cost function to minimize that compares data to spline fit.
 
@@ -296,6 +300,10 @@ def default_cost_fn(
     concavity_weight
         The weight of the curvature penalization term. This should be tuned
         based on the desired smoothness of the spline. Default is `0.0`.
+    concavity_scale
+        The scale of the smoothing for the curvature penalization term. This
+        should be tuned based on the desired smoothness of the spline. Default
+        is `1e2`.
 
     """
     data_cost = data_distance_cost_fn(knots, gamma, data_gamma, data_y, sigmas=sigmas)
@@ -308,7 +316,7 @@ def default_cost_fn(
         knots,
         gamma,
         data_gamma,
-        1e-2,
+        concavity_scale,
     )
 
     return data_weight * data_cost + concavity_weight * delta_concavity_cost
@@ -316,6 +324,34 @@ def default_cost_fn(
 
 DEFAULT_OPTIMIZER = optax.adam(learning_rate=1e-3)
 StepState: TypeAlias = tuple[dict[str, Any], optax.OptState]
+
+
+def _free_and_fixed_params(
+    init_knots: Array,
+    fixed_mask: tuple[bool, ...] | None,
+) -> tuple[Array, Callable[[Array], Array]]:
+    """Split flat parameters into free subset and provide a reconstructor."""
+    if fixed_mask is None:
+        free_knots_init = init_knots
+
+        def reconstruct_knots(free_knots: SzK2) -> SzK2:
+            return free_knots
+
+    else:
+        fixed_mask_ = np.array(fixed_mask, dtype=bool)
+        (fixed_idx,) = np.nonzero(fixed_mask_)
+        (free_idx,) = np.nonzero(~fixed_mask_)
+
+        fixed_knots = init_knots[fixed_idx]
+        free_knots_init = init_knots[free_idx]
+
+        def reconstruct_knots(free_knots: SzK2) -> SzK2:
+            out = jnp.empty_like(init_knots)
+            out = out.at[fixed_idx].set(fixed_knots)
+            out = out.at[free_idx].set(free_knots)
+            return out
+
+    return free_knots_init, reconstruct_knots
 
 
 @ft.partial(
@@ -365,18 +401,18 @@ def optimize_spline_knots(
         `data_y` as arguments.
     cost_kwargs
         Additional keyword arguments to pass to the cost function. E.g.
-        `data_distance_cost_fn` can take 'sigmas' and `concavity_change_cost_fn` can
-        take `concavity_weight`. `default_cost_fn` can take both. JAX treats
-        these as static.
+        `data_distance_cost_fn` can take 'sigmas' and `concavity_change_cost_fn`
+        can take `concavity_weight` and `concavity_scale`. `default_cost_fn` can
+        take both. JAX treats these as static.
     fixed_mask
         A mask that indicates which knots are fixed. If `None` then all knots
         are free to be optimized. If a mask is provided then the knots at the
         indices where the mask is `True` are fixed and the knots at the indices
-        where the mask is `False` are free to be optimized. The fixed knots
-        are not optimized and are not included in the cost function. This is
-        useful if you want to optimize only a subset of the knots while
-        keeping the others fixed. The mask should be the same length as
-        `init_knots`. The fixed knots are reconstructed in the final output.
+        where the mask is `False` are free to be optimized. The fixed knots are
+        not optimized and are not included in the cost function. This is useful
+        if you want to optimize only a subset of the knots while keeping the
+        others fixed. The mask should be the same length as `init_knots`. The
+        fixed knots are reconstructed in the final output.
 
     optimizer
         The optimizer to use. Defaults to Adam with a learning rate of 1e-3.
@@ -387,24 +423,9 @@ def optimize_spline_knots(
     cost_kw = {} if cost_kwargs is None else cost_kwargs
 
     # Determine fixed/free indices using fixed_mask argument
-    if fixed_mask is not None:
-        fixed_mask_ = np.array(fixed_mask, dtype=bool)
-        (fixed_idx,) = np.nonzero(fixed_mask_)
-        (free_idx,) = np.nonzero(~fixed_mask_)
-
-        fixed_knots = init_knots[fixed_idx]
-        free_knots_init = init_knots[free_idx]
-
-        def reconstruct_knots(free_knots: SzK2) -> SzK2:
-            out = jnp.empty_like(init_knots)
-            out = out.at[fixed_idx].set(fixed_knots)
-            out = out.at[free_idx].set(free_knots)
-            return out
-    else:
-        free_knots_init = init_knots
-
-        def reconstruct_knots(free_knots: SzK2) -> SzK2:
-            return free_knots
+    free_knots_init, reconstruct_knots = _free_and_fixed_params(
+        init_knots, fixed_mask=fixed_mask
+    )
 
     # The loss function is the cost function, reconstructed with the free knots.
     @ft.partial(jax.jit)
@@ -471,7 +492,7 @@ def new_gamma_knots_from_spline(
     gamma_old = jnp.linspace(
         spline.x.min(), spline.x.max(), int(1e5), dtype=float
     )  # old gammas
-    vs = jax.vmap(speed, in_axes=(None, 0))(spline, gamma_old)
+    vs = speed_vec_fn(spline, gamma_old)
     s = jnp.cumsum(vs)
     gamma_new = 2 * s / s[-1] - 1  # new gamma in [-1, 1]
 
