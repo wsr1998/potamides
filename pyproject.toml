@@ -107,6 +107,7 @@
   testpaths = [
     "src",
     "tests",
+    "docs",
   ]
 
 
