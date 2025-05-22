@@ -10,7 +10,58 @@
 
 Potamides is ... in [JAX][jax].
 
+## Installation
+
+<!-- [![PyPI version][pypi-version]][pypi-link]
+[![PyPI platforms][pypi-platforms]][pypi-link] -->
+
+::::{tab-set}
+
+:::{tab-item} pip
+
+```bash
+pip install potamides
+```
+
+:::
+
+:::{tab-item} uv
+
+```bash
+uv add potamides
+```
+
+:::
+
+:::{tab-item} source, via pip
+
+```bash
+pip install git+https://https://github.com/wsr1998/potamides.git
+```
+
+:::
+
+:::{tab-item} building from source
+
+```bash
+cd /path/to/parent
+git clone https://https://github.com/wsr1998/potamides.git
+cd potamides
+pip install -e .  # editable mode
+```
+
+:::
+
+::::
+
 ## Quickstart
+
+```{code-block} python
+
+>>> import potamides
+
+
+```
 
 ### Fitting the Stream
 
