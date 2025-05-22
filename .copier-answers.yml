@@ -6,7 +6,7 @@ email: gnx996@ku.dk
 full_name: EGGS collaboration
 license: MIT
 org: wsr1998
-project_name: streamcurvature
+project_name: potamides
 project_short_description: Constrain gravitational potential with stream curvature
-url: https://github.com/wsr1998/streamcurvature
+url: https://github.com/wsr1998/potamides
 vcs: true

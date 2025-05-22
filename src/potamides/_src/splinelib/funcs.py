@@ -30,8 +30,8 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax.experimental.ode import odeint
 
-import streamcurvature._src.custom_types as ct
-from streamcurvature._src.custom_types import LikeSz0, Sz0
+import potamides._src.custom_types as ct
+from potamides._src.custom_types import LikeSz0, Sz0
 
 from .data import point_to_point_distance
 
@@ -61,7 +61,7 @@ def position(spline: interpax.Interpolator1D, gamma: ct.SzN, /) -> ct.SzNF:
 
     See Also
     --------
-    `streamcurvature.Track.position`
+    `potamides.Track.position`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
@@ -70,7 +70,7 @@ def position(spline: interpax.Interpolator1D, gamma: ct.SzN, /) -> ct.SzNF:
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -138,7 +138,7 @@ def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.
 
     See Also
     --------
-    `streamcurvature.Track.spherical_position`
+    `potamides.Track.spherical_position`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
@@ -147,7 +147,7 @@ def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -214,7 +214,7 @@ def tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     See Also
     --------
-    `streamcurvature.Track.tangent`
+    `potamides.Track.tangent`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
@@ -223,7 +223,7 @@ def tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -268,7 +268,7 @@ def unit_tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     See Also
     --------
-    `streamcurvature.splinelib.tangent`
+    `potamides.splinelib.tangent`
         The non-unit tangent vector at the specified position.
 
     Examples
@@ -334,7 +334,7 @@ def speed(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     See Also
     --------
-    `streamcurvature.Track.state_speed`
+    `potamides.Track.state_speed`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
@@ -343,7 +343,7 @@ def speed(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -386,13 +386,13 @@ def arc_length_p2p(
 
     See Also
     --------
-    `streamcurvature.Track.arc_length`
+    `potamides.Track.arc_length`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs. It also allows for other methods of computing the arc-length.
-    `streamcurvature.splinelib.arc_length_quadtrature`
+    `potamides.splinelib.arc_length_quadtrature`
         This method uses fixed quadrature to compute the integral. It is also
         limited in accuracy by the number of points used.
-    `streamcurvature.splinelib.arc_length_odeint`
+    `potamides.splinelib.arc_length_odeint`
         This method uses ODE integration to compute the integral.
 
     Examples
@@ -400,7 +400,7 @@ def arc_length_p2p(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -443,14 +443,14 @@ def arc_length_quadtrature(
 
     See Also
     --------
-    `streamcurvature.Track.arc_length`
+    `potamides.Track.arc_length`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs. It also allows for other methods of computing the arc-length.
-    `streamcurvature.splinelib.arc_length_p2p`
+    `potamides.splinelib.arc_length_p2p`
         This method computes the distance between each pair of points along the
         track and sums them up. Accuracy is limited by the number of points
         used.
-    `streamcurvature.splinelib.arc_length_odeint`
+    `potamides.splinelib.arc_length_odeint`
         This method uses ODE integration to compute the integral.
 
     Examples
@@ -458,7 +458,7 @@ def arc_length_quadtrature(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -506,14 +506,14 @@ def arc_length_odeint(
 
     See Also
     --------
-    `streamcurvature.Track.arc_length`
+    `potamides.Track.arc_length`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs. It also allows for other methods of computing the arc-length.
-    `streamcurvature.splinelib.arc_length_p2p`
+    `potamides.splinelib.arc_length_p2p`
         This method computes the distance between each pair of points along the
         track and sums them up. Accuracy is limited by the number of points
         used.
-    `streamcurvature.splinelib.arc_length_quadtrature`
+    `potamides.splinelib.arc_length_quadtrature`
         This method uses fixed quadrature to compute the integral. It is also
         limited in accuracy by the number of points used.
 
@@ -522,7 +522,7 @@ def arc_length_odeint(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -592,18 +592,18 @@ def arc_length(
 
     See Also
     --------
-    `streamcurvature.Track.arc_length`
+    `potamides.Track.arc_length`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
-    `streamcurvature.splinelib.arc_length_p2p`
+    `potamides.splinelib.arc_length_p2p`
         This method computes the distance between each pair of points along the
         track and sums them up. Accuracy is limited by the number of points
         used. THis can be selected by setting `method="p2p"`.
-    `streamcurvature.splinelib.arc_length_quadtrature`
+    `potamides.splinelib.arc_length_quadtrature`
         This method uses fixed quadrature to compute the integral. It is also
         limited in accuracy by the number of points used. This can be selected
         by setting `method="quad"`.
-    `streamcurvature.splinelib.arc_length_odeint`
+    `potamides.splinelib.arc_length_odeint`
         This method uses ODE integration to compute the integral. This can be
         selected by setting `method="ode"`.
 
@@ -612,7 +612,7 @@ def arc_length(
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -677,7 +677,7 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> from streamcurvature.splinelib import acceleration
+    >>> from potamides.splinelib import acceleration
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -729,7 +729,7 @@ def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> 
 
     See Also
     --------
-    `streamcurvature.Track.principle_unit_normal`
+    `potamides.Track.principle_unit_normal`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
@@ -738,7 +738,7 @@ def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> 
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -796,7 +796,7 @@ def curvature(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     See Also
     --------
-    `streamcurvature.Track.curvature`
+    `potamides.Track.curvature`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
@@ -805,7 +805,7 @@ def curvature(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -837,7 +837,7 @@ def kappa(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.Sz0:
 
     See Also
     --------
-    `streamcurvature.Track.kappa`
+    `potamides.Track.kappa`
         This method auto-vectorizes to support arbitrarily shaped `gamma`
         inputs.
 
@@ -846,7 +846,7 @@ def kappa(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.Sz0:
     >>> import jax
     >>> import jax.numpy as jnp
     >>> import interpax
-    >>> import streamcurvature.splinelib as splib
+    >>> import potamides.splinelib as splib
 
     >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
     >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)

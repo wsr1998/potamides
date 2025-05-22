@@ -24,7 +24,7 @@ from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Real
 from xmmutablemap import ImmutableMap
 
-from streamcurvature._src.custom_types import Sz0, SzData, SzN, SzN2
+from potamides._src.custom_types import Sz0, SzData, SzN, SzN2
 
 from .funcs import curvature, speed, unit_tangent
 

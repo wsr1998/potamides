@@ -1,1 +1,1 @@
-"""Test the `streamcurvature.splinelib` module."""
+"""Test the `potamides.splinelib` module."""

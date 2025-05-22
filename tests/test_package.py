@@ -2,8 +2,8 @@
 
 import importlib.metadata
 
-import streamcurvature as m
+import potamides as m
 
 
 def test_version():
-    assert importlib.metadata.version("streamcurvature") == m.__version__
+    assert importlib.metadata.version("potamides") == m.__version__

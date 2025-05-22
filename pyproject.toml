@@ -1,5 +1,5 @@
 [project]
-  name = "streamcurvature"
+  name = "potamides"
   authors = [
     { name = "Jacob Nibauer", email = "jnibauer@princeton.edu" },
     { name = "Nathaniel Starkman", email = "starkman@mit.edu" },
@@ -42,10 +42,10 @@
   ]
 
   [project.urls]
-    Homepage      = "https://github.com/wsr1998/streamcurvature"
-    "Bug Tracker" = "https://github.com/wsr1998/streamcurvature/issues"
-    Discussions   = "https://github.com/wsr1998/streamcurvature/discussions"
-    Changelog     = "https://github.com/wsr1998/streamcurvature/releases"
+    Homepage      = "https://github.com/wsr1998/potamides"
+    "Bug Tracker" = "https://github.com/wsr1998/potamides/issues"
+    Discussions   = "https://github.com/wsr1998/potamides/discussions"
+    Changelog     = "https://github.com/wsr1998/potamides/releases"
 
 
 [dependency-groups]
@@ -81,7 +81,7 @@
 
 [tool.hatch]
   version.source               = "vcs"
-  build.hooks.vcs.version-file = "src/streamcurvature/_version.py"
+  build.hooks.vcs.version-file = "src/potamides/_version.py"
 
 
 [tool.uv.sources]
@@ -112,7 +112,7 @@
 
 [tool.coverage]
   run.source = [
-    "streamcurvature",
+    "potamides",
   ]
   report.exclude_also = [
     '\.\.\.',
@@ -137,7 +137,7 @@
   disallow_incomplete_defs = false
 
   [[tool.mypy.overrides]]
-    module = "streamcurvature.*"
+    module = "potamides.*"
     disallow_untyped_defs = true
     disallow_incomplete_defs = true
     disable_error_code = [

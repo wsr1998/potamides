@@ -1936,7 +1936,7 @@ wheels = [
 ]
 
 [[package]]
-name = "streamcurvature"
+name = "potamides"
 source = { editable = "." }
 dependencies = [
     { name = "astropy" },
