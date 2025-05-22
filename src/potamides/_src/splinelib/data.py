@@ -112,7 +112,9 @@ def _find_plateau_mask(arr: SzN, /) -> SzN:
 def make_increasing_gamma_from_data(data: SzData2, /) -> tuple[SzGamma, SzGamma2]:
     r"""Return the trimmed data and gamma, the normalized arc-length.
 
-    $$ \gamma = 2\frac{s}{L} - 1 , \in [-1, 1] $$
+    .. math::
+
+        \gamma = 2\frac{s}{L} - 1 , \in [-1, 1]
 
     where $s$ is the arc-length at $\gamma$ and $L$ is the total arc-length.
 

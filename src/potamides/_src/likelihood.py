@@ -23,13 +23,13 @@ def compute_ln_lik_curved(
 
     Parameters
     ----------
-    ngamma : int
+    ngamma
         Number of gamma values.
-    f1_logf1 : Array[float, ()]
+    f1_logf1
         Log-likelihood contribution from the first feature.
-    f2_logf2 : Array[float, ()]
+    f2_logf2
         Log-likelihood contribution from the second feature.
-    f3_logf3 : Array[float, ()]
+    f3_logf3
         Log-likelihood contribution from the third feature.
 
     Returns
@@ -110,16 +110,17 @@ def compute_ln_likelihood(
         the stream track. These point in the direction of maximum curvature.
     acc_xy_unit : Array[float, (N, 2)]
         Unit acceleration vectors in the x-y plane at N positions. These
-        represent the direction of the gravitational acceleration from
-        the potential model.
-    where_straight : Array[bool, (N,)], optional
+        represent the direction of the gravitational acceleration from the
+        potential model.
+    where_straight : Array[bool, (N,)]
         Boolean mask indicating positions where the stream is locally straight
-        (has negligible curvature). If None, all positions are assumed to be
-        curved. Default is None.
-    sigma_theta : float, default 10°
+        (has negligible curvature). If `None` (default), all positions are
+        assumed to be curved.
+    sigma_theta : float
         Standard deviation of the angle distribution between acceleration and
         curvature vectors for straight segments, given in radians. Only used
-        when `where_straight` contains True values.
+        when `where_straight` contains `True` values. Default is 10 degrees in
+        radians.
 
     Returns
     -------
@@ -275,9 +276,8 @@ def combine_ln_likelihoods(
 
         \mathcal{L}_{combined} = \sum_i w_i \mathcal{L}_i
 
-    where :math:`n_i` is the number of gamma points, :math:`L_i` is the
-    arc-length, and :math:`\mathcal{L}_i` is the log-likelihood for
-    segment :math:`i`.
+    where $n_i$ is the number of gamma points, $L_i$ is the arc-length, and
+    $\mathcal{L}_i$ is the log-likelihood for segment $i$.
 
     Examples
     --------

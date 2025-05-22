@@ -3,7 +3,7 @@ name = "potamides"
 authors = [
   { name = "Jacob Nibauer", email = "jnibauer@princeton.edu" },
   { name = "Nathaniel Starkman", email = "starkman@mit.edu" },
-  { name = "Sirui", email = "gnx996@ku.dk" },
+  { name = "Sirui Wu", email = "gnx996@ku.dk" },
 ]
 description = "Constrain gravitational potential with stream curvature"
 readme = "README.md"
@@ -58,12 +58,16 @@ dev = [
   "cz-conventional-gitmoji>=0.7.0",
 ]
 docs = [
-  "furo>=2023.08.17",
-  "matplotlib>=3.10.1",
-  "myst_parser>=0.13",
-  "sphinx>=7.0",
-  "sphinx_autodoc_typehints",
-  "sphinx_copybutton",
+  "furo>=2024.8.6",
+  "sphinx-book-theme>=1.1.4",
+  "myst-parser>=4.0.1",
+  "sphinx>=8.2.3",
+  "sphinx-autodoc-typehints>=3.1.0",
+  "sphinx-copybutton>=0.5.2",
+  "sphinx-design>=0.6.1",
+  "sphobjinv>=2.3.1.3",
+  "myst-nb>=1.3.0",
+  "corner>=2.2.3",
 ]
 lint = [
   "pre-commit>=4.5.0",
@@ -75,8 +79,11 @@ nox = [
   "uv>=0.9.16",
 ]
 test = [
+  "corner>=2.2.3",
+  "h5py>=3.14.0",
   "matplotlib>=3.10.1",
   "optional-dependencies>=0.3.2",
+  "pandas>=2.3.1",
   "pytest>=9.0.2",
   "pytest-arraydiff>=0.6.1",
   "pytest-cov>=6.0.0",

@@ -39,7 +39,7 @@ from .data import point_to_point_distance
 
 @ft.partial(jax.jit, inline=True)
 def position(spline: interpax.Interpolator1D, gamma: ct.SzN, /) -> ct.SzNF:
-    r"""Compute $\vec{x}(gamma)$ for `spline` $\vec{x}$ at `gamma`.
+    r"""Compute $\vec{x}(\gamma)$ for `spline` $\vec{x}$ at `gamma`.
 
     This is the Cartesian position vector at the given parameter values `gamma`.
     The output is an array with shape `(N, F)`, where `N` is the number of input
@@ -112,7 +112,7 @@ def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.
     \dots, F-2 $$
 
     where $R_{i+1} = \sqrt{\sum_{j=i+1}^{F-1} x_j^2}$ is the partial radius from
-    the $i$-th coordinate to the last coordinate.
+    the i-th coordinate to the last coordinate.
 
     The last angular coordinate is special-cased as it only depends on the last
     two coordinates:
@@ -195,7 +195,8 @@ def tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     The tangent vector is defined as:
 
-    $$ T(\gamma) = \frac{d\vec{x}}{d\gamma} $$
+    .. math::
+        T(\gamma) = \frac{d\vec{x}}{d\gamma}
 
     This function is scalar. To compute the unit tangent vector at multiple
     positions, use `jax.vmap`.
@@ -249,7 +250,9 @@ def unit_tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     The unit tangent vector is defined as:
 
-    $$ \hat{\vec{T}} = \vec{T} / \|\vec{T}\| $$
+    .. math::
+
+        \hat{\vec{T}} = \vec{T} / \|\vec{T}\|
 
     This function is scalar. To compute the unit tangent vector at multiple
     positions, use `jax.vmap`.
@@ -300,16 +303,22 @@ def speed(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     This is the norm of the tangent vector at the given position.
 
-    $$ v(\gamma) = \| \frac{d\vec{x}(\gamma)}{d\gamma} \|
-                 = \|\vec{T}(\gamma) \| $$
+    .. math::
+
+        v(\gamma) = \| \frac{d\vec{x}(\gamma)}{d\gamma} \|
+        = \|\vec{T}(\gamma) \|
 
     An important note is that this is also the differential arc-length!
 
-    $$ s = \int_{\gamma_0}^{\gamma} \|\frac{\vec{x}}{d\gamma'}\| d\gamma'. $$
+    .. math::
+
+        s = \int_{\gamma_0}^{\gamma} \|\frac{\vec{x}}{d\gamma'}\| d\gamma'.
 
     Thus, the arc-length element is:
 
-    $$ \frac{ds}{d\gamma} = \|\frac{\vec{x}}{d\gamma'}\| $$
+    .. math::
+
+        \frac{ds}{d\gamma} = \|\frac{\vec{x}}{d\gamma'}\|
 
     If we are working in 2D in the flat-sky approximation for extragalactic
     streams, then it is recommended for $\gamma$ to be proportional to the
@@ -562,10 +571,11 @@ def arc_length(
 ) -> Sz0:
     r"""Return the arc-length of the track.
 
-    $$
+    .. math::
+
         s(\gamma_0, \gamma_1) = \int_{\gamma_0}^{\gamma_1} \left\|
         \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
-    $$
+
 
     Computing the arc-length requires computing an integral over the norm of
     the tangent vector. This can be done using many different methods. We
@@ -659,9 +669,8 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     tangent vector:
 
     $$
-      \vec{a}(\gamma)
-      = \frac{d^2\vec{x}}{d\gamma^2}
-      = \frac{d}{d\gamma} (\frac{d\vec{x}}{d\gamma}).
+    \vec{a}(\gamma) = \frac{d^2\vec{x}}{d\gamma^2}
+                    = \frac{d}{d\gamma} (\frac{d\vec{x}}{d\gamma}).
     $$
 
     Parameters
@@ -777,20 +786,19 @@ def curvature(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     $$ \frac{d\hat{T}}{ds} = \kappa \hat{N}, $$
 
-    where $ \kappa $ is the curvature and $ \hat{N} $ the unit normal
-    vector, then dividing $ \frac{d\hat{T}}{d\gamma} $ by $
-    \frac{ds}{d\gamma} $ yields
+    where $\kappa$ is the curvature and $\hat{N}$ the unit normal
+    vector, then dividing $\frac{d\hat{T}}{d\gamma}$ by $\frac{ds}{d\gamma}$ yields
 
     $$ \kappa \hat{N} = \frac{d\hat{T}/d\gamma}{ds/d\gamma}. $$
 
-    Here, $\frac{d\hat{T}}{d\gamma}$ (computed by ``dThat_dgamma``)
-    describes how the direction of the tangent changes with respect to the
-    affine parameter $\gamma$, and $\frac{ds}{d\gamma}$ (obtained from
-    state_speed) represents the state speed (i.e. the rate of change of
-    arc-length with respect to $\gamma$).
+    Here, $\frac{d\hat{T}}{d\gamma}$ (computed by ``dThat_dgamma``) describes
+    how the direction of the tangent changes with respect to the affine
+    parameter $\gamma$, and $\frac{ds}{d\gamma}$ (obtained from ``state_speed``)
+    represents the state speed (i.e. the rate of change of arc-length with
+    respect to $\gamma$).
 
-    This formulation assumes that $\gamma$ is chosen to be proportional to
-    the arc-length of the track.
+    This formulation assumes that $\gamma$ is chosen to be proportional to the
+    arc-length of the track.
 
     Parameters
     ----------

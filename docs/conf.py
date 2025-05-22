@@ -1,27 +1,39 @@
 """Sphinx configuration."""
 
 import importlib.metadata
-from typing import Any
+import re
+import sys
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any, Final
 
-project = "potamides"
-copyright = "2025, Sirui"
-author = "Sirui"
+from docutils import nodes
+from sphinx import addnodes
+from sphinx.transforms import SphinxTransform
+
+here = Path(__file__).parent
+sys.path.insert(0, str((here.parent / "src").resolve()))
+
+project: Final[str] = "potamides"
+copyright: Final[str] = "2025, Sirui"
+author: Final[str] = "Sirui"
 version = release = importlib.metadata.version("potamides")
 
-extensions = [
-    "matplotlib.sphinxext.plot_directive",
-    "myst_parser",
+extensions: Final[list[str]] = [
+    "myst_nb",
+    "sphinx_design",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    "sphinx_autodoc_typehints",
+    # "sphinx_autodoc_typehints",
     "sphinx_copybutton",
+    "matplotlib.sphinxext.plot_directive",
 ]
 
-source_suffix = [".rst", ".md"]
-exclude_patterns = [
+source_suffix: Final[list[str]] = [".rst", ".md"]
+exclude_patterns: Final[list[str]] = [
     "_build",
     "**.ipynb_checkpoints",
     "Thumbs.db",
@@ -30,45 +42,57 @@ exclude_patterns = [
     ".venv",
 ]
 
-html_theme = "furo"
+html_theme: Final[str] = "sphinx_book_theme"
 
 html_theme_options: dict[str, Any] = {
-    "footer_icons": [
+    "home_page_in_toc": True,
+    "repository_url": "https://github.com/wsr1998/potamides",
+    "repository_branch": "main",
+    "path_to_docs": "docs",
+    "use_repository_button": True,
+    "use_edit_page_button": False,
+    "use_issues_button": True,
+    "show_toc_level": 2,
+    "icon_links": [
         {
             "name": "GitHub",
             "url": "https://github.com/wsr1998/potamides",
-            "html": """
-                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
-                </svg>
-            """,
-            "class": "",
+            "icon": "fa-brands fa-github",
         },
     ],
-    "source_repository": "https://github.com/wsr1998/potamides",
-    "source_branch": "main",
-    "source_directory": "docs/",
 }
 
 myst_enable_extensions = [
     "colon_fence",
+    "dollarmath",
+    "amsmath",
+    "attrs_block",
 ]
 
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
+myst_directives: Final[dict[str, str]] = {
+    "plot": "matplotlib.sphinxext.plot_directive.plot_directive",
 }
 
-nitpick_ignore = [
+intersphinx_mapping: Final[dict[str, tuple[str, str | None]]] = {
+    "python": ("https://docs.python.org/3", None),
+    "interpax": ("https://interpax.readthedocs.io/en/latest", None),
+    "jax": ("https://jax.readthedocs.io/en/latest/", None),
+    "jaxtyping": ("https://docs.kidger.site/jaxtyping/", "static/jaxtyping.inv"),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "unxt": ("https://unxt.readthedocs.io/en/latest/", None),
+}
+
+nitpick_ignore: Final[list[tuple[str, str]]] = [
     ("py:class", "_io.StringIO"),
     ("py:class", "_io.BytesIO"),
 ]
 
 # Configure matplotlib plot directive
-plot_include_source = True
-plot_html_show_source_link = False
-plot_html_show_formats = False
-plot_formats = ["png"]
-plot_rcparams = {
+plot_include_source: Final = True
+plot_html_show_source_link: Final = False
+plot_html_show_formats: Final = False
+plot_formats: Final[list[str]] = ["png"]
+plot_rcparams: Final[dict[str, Any]] = {
     "figure.figsize": (8, 6),
     "figure.dpi": 150,
     "savefig.dpi": 150,
@@ -80,7 +104,7 @@ plot_rcparams = {
 }
 
 # Configure doctest
-doctest_global_setup = """
+doctest_global_setup: Final = """
 import jax
 import jax.numpy as jnp
 import potamides as ptd
@@ -88,4 +112,113 @@ import matplotlib.pyplot as plt
 import numpy as np
 """
 
-always_document_param_types = True
+always_document_param_types: Final = True
+
+
+# Tuples: "(N,)", "(N, 2)", "(n1, n2, n3)", "(..., 2)", etc.
+_SHAPE_TUPLE_RE: Final[str] = (
+    r"^\(\s*(?:\.\.\.|[A-Za-z_]\w*|\d+)(?:\s*,\s*(?:\.\.\.|[A-Za-z_]\w*|\d+))*\s*\)$"
+)
+
+# Only allow these tokens: N, S, 1, 2, or literal "..."
+_SHAPE_NAME_RE: Final[str] = r"^(?:F|N|S|1|2|\.\.\.)$"
+
+nitpick_ignore_regex: Final[list[tuple[str, str]]] = [
+    ("py:class", _SHAPE_TUPLE_RE),
+    ("py:data", _SHAPE_TUPLE_RE),
+    ("py:class", _SHAPE_NAME_RE),
+    ("py:data", _SHAPE_NAME_RE),
+]
+
+# -----------------------------------------------------------------------------
+# --- Auto-link bare tokens like "Array" only inside parameter/return terms ----
+
+
+# Map visible token → (domain:role, fully-qualified target)
+BARE_XREFS: Mapping[str, tuple[str, str]] = {
+    "Array": ("py:class", "jaxtyping.Array"),
+    "Float": ("py:data", "jaxtyping.Float"),
+    "Real": ("py:data", "jaxtyping.Real"),
+    "Int": ("py:data", "jaxtyping.Int"),
+}
+
+_SKIP_PARENTS: Final = (
+    nodes.literal,  # inline code ``like this``
+    nodes.literal_block,  # code blocks
+    nodes.reference,  # existing links
+    nodes.title,  # section titles
+    nodes.emphasis,
+    nodes.strong,
+)
+
+
+def _under_param_or_return_term(text_node: nodes.Text) -> bool:
+    """Return True if this text node is somewhere under a 'term' node of a
+    definition list (e.g., the 'x : Array' term produced by Napoleon)."""
+    p = text_node.parent
+    while p is not None:
+        if isinstance(p, nodes.term):
+            return True
+        p = p.parent
+    return False
+
+
+class AutoLinkBareWordsInTerms(SphinxTransform):
+    default_priority = 850  # after parsing; before writing
+
+    def apply(self) -> None:
+        if not BARE_XREFS:
+            return
+        # Compile one regex that matches any configured token as a whole word
+        pattern = re.compile(
+            r"\b(" + "|".join(map(re.escape, BARE_XREFS.keys())) + r")\b"
+        )
+
+        for text_node in list(self.document.traverse(nodes.Text)):
+            # Skip code, links, titles, etc.
+            if isinstance(text_node.parent, _SKIP_PARENTS):
+                continue
+            # Only operate in parameter/return terms (e.g., "x : Array", "Array" in Returns)
+            if not _under_param_or_return_term(text_node):
+                continue
+
+            text = text_node.astext()
+            out: list[nodes.Node] = []
+            last = 0
+            changed = False
+
+            for m in pattern.finditer(text):
+                if m.start() > last:
+                    out.append(nodes.Text(text[last : m.start()]))
+
+                word = m.group(0)
+                role, target = BARE_XREFS[word]
+                domain, reftype = role.split(":", 1)
+
+                # Create a cross-ref that intersphinx can resolve (to your local jaxtyping.inv)
+                ref = addnodes.pending_xref(
+                    "",
+                    refdomain=domain,
+                    reftype=reftype,
+                    reftarget=target,
+                    modname=None,
+                    classname=None,
+                )
+                # Link text: keep as plain text (or use nodes.literal for code style)
+                ref += nodes.Text(word)
+                out.append(ref)
+
+                last = m.end()
+                changed = True
+
+            if not changed:
+                continue
+            if last < len(text):
+                out.append(nodes.Text(text[last:]))
+            text_node.parent.replace(text_node, out)
+
+
+def setup(app):
+    app.add_transform(AutoLinkBareWordsInTerms)
+    # app.connect("missing-reference", _shape_missing_ref)
+    return {"parallel_read_safe": True, "parallel_write_safe": True}
