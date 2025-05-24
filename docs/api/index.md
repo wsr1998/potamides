@@ -13,9 +13,9 @@ splinelib.md
 
 ```{eval-rst}
 
-.. currentmodule:: unxt
+.. currentmodule:: potamides
 
-.. automodule:: unxt
+.. automodule:: potamides
     :exclude-members: aval, default, materialise, enable_materialise
     :noindex:
 
