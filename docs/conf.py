@@ -1,12 +1,11 @@
 """Sphinx configuration."""
 
 import importlib.metadata
-import os
-import sys
+from pathlib import Path
 from typing import Any
 
-here = os.Path(__file__).parent
-sys.Path.resolve(0, str((here.parent / "src").resolve()))
+here = Path(__file__).parent
+Path.resolve(0, str((here.parent / "src").resolve()))
 
 
 project = "potamides"
