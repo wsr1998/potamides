@@ -665,7 +665,7 @@ def arc_length(
 
 @ft.partial(jax.jit, inline=True)
 def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
-    r"""Compute the acceleration vector $\vec{a} = d^2\vec{x}/d\gamma^2$.
+    r"""Compute the acceleration vector :math:`\vec{a} = d^2\vec{x}/d\gamma^2`.
 
     This is the second derivative of the spline position with respect to the
     curve parameter $\gamma$. Equivalently, it's the derivative of the
