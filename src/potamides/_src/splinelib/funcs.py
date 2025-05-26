@@ -114,7 +114,7 @@ def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.
         \phi_i(\gamma) = \arctan2( R_{i+1}, x_i ), \quad \text{for } i = 0,
         \dots, F-2
 
-    where ..math:`R_{i+1} = \sqrt{\sum_{j=i+1}^{F-1} x_j^2}` is the partial radius from
+    where :math:`R_{i+1} = \sqrt{\sum_{j=i+1}^{F-1} x_j^2}` is the partial radius from
     the $i$-th coordinate to the last coordinate.
 
     The last angular coordinate is special-cased as it only depends on the last
