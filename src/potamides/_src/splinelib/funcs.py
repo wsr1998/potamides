@@ -679,14 +679,14 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     Parameters
     ----------
     spline : interpax.Interpolator1D
-        A twice-differentiable 1D spline for $\vec{x}(\gamma)$.
+        A twice-differentiable 1D spline for :math:`\vec{x}(\gamma)$`.
     gamma : float
         The scalar parameter value at which to compute the acceleration.
 
     Returns
     -------
     Array[float, (F,)]
-        The acceleration vector $\frac{d^2\vec{x}}{d\gamma^2}$ of length F,
+        The acceleration vector :math:`\frac{d^2\vec{x}}{d\gamma^2}` of length F,
         where F is the spatial dimension of the spline.
 
     Examples
@@ -717,7 +717,7 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
 @ft.partial(jax.jit)
 def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
-    r"""Return the unit normal vector $\hat{N}(\gamma)$ along the spline.
+    r"""Return the unit normal vector :math:`\hat{N}(\gamma)` along the spline.
 
     The unit normal vector is defined as the projection of the acceleration
     vector onto the plane orthogonal to the unit tangent vector, divided by its
@@ -727,8 +727,8 @@ def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> 
 
         \hat{N}(\gamma) = \frac{d\hat{T}/d\gamma}{|d\hat{T}/d\gamma|}.
 
-    where $\hat{T}(\gamma)$ is the unit tangent vector at $\gamma$ and
-    $\vec{a}(\gamma)$ is the acceleration vector at $\gamma$. This function is
+    where :math:`\hat{T}(\gamma)` is the unit tangent vector at :math:`\gamma` and
+    $\vec{a}(\gamma)$ is the acceleration vector at :math:`\gamma`. This function is
     scalar. To compute the unit normal vector at multiple positions, use
     `jax.vmap`.
 
@@ -795,9 +795,9 @@ def curvature(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
         \frac{d\hat{T}}{ds} = \kappa \hat{N},
 
-    where $ \kappa $ is the curvature and $ \hat{N} $ the unit normal
-    vector, then dividing $ \frac{d\hat{T}}{d\gamma} $ by $
-    \frac{ds}{d\gamma} $ yields
+    where :math:`\kappa` is the curvature and :math:`\hat{N}` the unit normal
+    vector, then dividing :math:`\frac{d\hat{T}}{d\gamma}` by :math:`
+    \frac{ds}{d\gamma}` yields
 
     .. math::
 
