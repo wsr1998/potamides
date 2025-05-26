@@ -103,7 +103,9 @@ def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.
 
     The radius is defined as the Euclidean norm of the position vector:
 
-    $$ r(\gamma) = \left\| \vec{x}(\gamma) \right\| $$
+    .. math::
+
+        r(\gamma) = \left\| \vec{x}(\gamma) \right\|.
 
     The angular coordinates are computed recursively using:
 
