@@ -673,7 +673,7 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     .. math::
 
-    \vec{a}(\gamma)= \frac{d^2\vec{x}}{d\gamma^2}
+        \vec{a}(\gamma)= \frac{d^2\vec{x}}{d\gamma^2}
         = \frac{d}{d\gamma} (\frac{d\vec{x}}{d\gamma}).
 
     Parameters

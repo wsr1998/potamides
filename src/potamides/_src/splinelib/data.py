@@ -62,7 +62,9 @@ def point_to_point_arclenth(data: SzData2, /) -> SzGamma:
 def make_gamma_from_data(data: SzData2, /) -> SzGamma:
     r"""Return $\gamma$, the normalized arc-length of the data.
 
-    $$ \gamma = 2\frac{s}{L} - 1 , \in [-1, 1] $$
+    .. math::
+
+        \gamma = 2\frac{s}{L} - 1 , \in [-1, 1]
 
     where $s$ is the arc-length at $\gamma$ and $L$ is the total arc-length.
 
@@ -112,7 +114,9 @@ def _find_plateau_mask(arr: SzN, /) -> SzN:
 def make_increasing_gamma_from_data(data: SzData2, /) -> tuple[SzGamma, SzGamma2]:
     r"""Return the trimmed data and gamma, the normalized arc-length.
 
-    $$ \gamma = 2\frac{s}{L} - 1 , \in [-1, 1] $$
+    .. math::
+
+        \gamma = 2\frac{s}{L} - 1 , \in [-1, 1]
 
     where $s$ is the arc-length at $\gamma$ and $L$ is the total arc-length.
 

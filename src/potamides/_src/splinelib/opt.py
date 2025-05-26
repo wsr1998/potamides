@@ -149,10 +149,11 @@ def data_distance_cost_fn(
 ) -> Sz0:
     r"""Cost function to minimize that compares data to spline fit.
 
-    $$ \text{cost} = \sum_i \left( \frac{y_i - f(\gamma_i)}{\sigma_i} \right)^2
-    $$
+    .. math::
 
-    where $$y_i$ is the target data, $f(\gamma_i)$ is the spline evaluated at
+        \text{cost} = \sum_i \left( \frac{y_i - f(\gamma_i)}{\sigma_i} \right)^2
+
+    where $y_i$ is the target data, $f(\gamma_i)$ is the spline evaluated at
     $\gamma_i$, and $\sigma_i$ is the uncertainty on $y_i$.
 
     Parameters
@@ -211,8 +212,9 @@ def concavity_change_cost_fn(
     The integrand of the cost function is the derivative of the arctangent of
     the signed curvature multiplied by a large number $\lambda$.
 
-    $$ \left( \frac{d}{ds} \atan\left(\lambda \kappa_{\text{signed}}(s)\right)
-    \right)^2 $$
+    .. math::
+        \left( \frac{d}{ds} \atan\left(\lambda \kappa_{\text{signed}}(s)\right)
+        \right)^2
 
     where $\kappa_{\text{signed}}(s)$ is the signed curvature at $s$ and
     $\lambda$ is a large number that controls the width of the smoothing. The
