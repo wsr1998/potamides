@@ -1,7 +1,12 @@
 """Sphinx configuration."""
 
 import importlib.metadata
+import os
+import sys
 from typing import Any
+
+sys.path.insert(0, os.Path.resolve("../src"))
+
 
 project = "potamides"
 copyright = "2025, Sirui"
