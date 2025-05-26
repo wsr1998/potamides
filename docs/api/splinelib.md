@@ -2,8 +2,8 @@
 
 ```{eval-rst}
 
-.. currentmodule:: ptd.units
+.. currentmodule:: ptd.splinelib
 
-.. automodule:: ptd.units
+.. automodule:: ptd.splinelib
 
 ```
