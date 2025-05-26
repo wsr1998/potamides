@@ -2,9 +2,9 @@
 
 ```{eval-rst}
 
-.. currentmodule:: potamides.accelerations
+.. currentmodule:: potamides._src.accelerations
 
-.. automodule:: potamides.accelerations
+.. automodule:: potamides._src.accelerations
     :members:
     :undoc-members:
     :show-inheritance:
