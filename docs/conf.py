@@ -5,7 +5,8 @@ import os
 import sys
 from typing import Any
 
-sys.path.insert(0, os.Path.resolve("../src"))
+here = os.Path(__file__).parent
+sys.Path.resolve(0, str((here.parent / "src").resolve()))
 
 
 project = "potamides"
