@@ -1,7 +1,12 @@
 """Sphinx configuration."""
 
 import importlib.metadata
+import sys
+from pathlib import Path
 from typing import Any
+
+here = Path(__file__).parent
+sys.path.insert(0, str((here.parent / "src").resolve()))
 
 project = "potamides"
 copyright = "2025, Sirui"
