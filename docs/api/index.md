@@ -6,6 +6,10 @@
 :glob:
 
 splinelib.md
+core.md
+likelihood.md
+plot.md
+accelerations.md
 *
 ```
 
