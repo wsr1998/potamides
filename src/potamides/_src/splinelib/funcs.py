@@ -105,7 +105,7 @@ def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.
 
     .. math::
 
-        r(\gamma) = \left\| \vec{x}(\gamma) \right\|.
+        r(\gamma) = \left\| \vec{x}(\gamma) \right\|
 
     The angular coordinates are computed recursively using:
 
@@ -120,7 +120,9 @@ def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.
     The last angular coordinate is special-cased as it only depends on the last
     two coordinates:
 
-    $$ \phi_{F-1}(\gamma) = \arctan2\left(x_F, x_{F-1}\right) $$
+    .. math::
+
+        \phi_{F-1}(\gamma) = \arctan2\left(x_F, x_{F-1}\right)
 
     For more details, see https://en.wikipedia.org/wiki/N-sphere.
 
@@ -198,7 +200,8 @@ def tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     The tangent vector is defined as:
 
-    $$ T(\gamma) = \frac{d\vec{x}}{d\gamma} $$
+    .. math::
+        T(\gamma) = \frac{d\vec{x}}{d\gamma}
 
     This function is scalar. To compute the unit tangent vector at multiple
     positions, use `jax.vmap`.
@@ -252,7 +255,9 @@ def unit_tangent(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     The unit tangent vector is defined as:
 
-    $$ \hat{\vec{T}} = \vec{T} / \|\vec{T}\| $$
+    .. math::
+
+        \hat{\vec{T}} = \vec{T} / \|\vec{T}\|
 
     This function is scalar. To compute the unit tangent vector at multiple
     positions, use `jax.vmap`.
@@ -303,8 +308,9 @@ def speed(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
     This is the norm of the tangent vector at the given position.
 
-    $$ v(\gamma) = \| \frac{d\vec{x}(\gamma)}{d\gamma} \|
-                 = \|\vec{T}(\gamma) \| $$
+    .. math::
+        v(\gamma) = \| \frac{d\vec{x}(\gamma)}{d\gamma} \|
+        = \|\vec{T}(\gamma) \|
 
     An important note is that this is also the differential arc-length!
 
