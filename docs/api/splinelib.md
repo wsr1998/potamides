@@ -2,8 +2,11 @@
 
 ```{eval-rst}
 
-.. currentmodule:: ptd.splinelib
+.. currentmodule:: potamides.splinelib
 
-.. automodule:: ptd.splinelib
+.. automodule:: potamides.splinelib
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 ```
