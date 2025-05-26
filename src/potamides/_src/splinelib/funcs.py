@@ -38,7 +38,7 @@ from .data import point_to_point_distance
 
 @ft.partial(jax.jit, inline=True)
 def position(spline: interpax.Interpolator1D, gamma: ct.SzN, /) -> ct.SzNF:
-    r"""Compute $\vec{x}(gamma)$ for `spline` $\vec{x}$ at `gamma`.
+    r"""Compute :math:`\vec{x}(\gamma)` for `spline` :math:`\vec{x}` at `gamma`.
 
     This is the Cartesian position vector at the given parameter values `gamma`.
     The output is an array with shape `(N, F)`, where `N` is the number of input
@@ -55,7 +55,7 @@ def position(spline: interpax.Interpolator1D, gamma: ct.SzN, /) -> ct.SzNF:
     Returns
     -------
     Array[real, (N, F)]
-        The position vector $\vec{x}(\gamma)$ at the specified positions. The
+        The position vector :math:`\vec{x}(\gamma)` at the specified positions. The
         shape is `(N, F)`, where `N` is the number of input `gamma` values and
         `F` is the number of dimensions of the spline.
 
@@ -93,7 +93,7 @@ def position(spline: interpax.Interpolator1D, gamma: ct.SzN, /) -> ct.SzNF:
 
 @ft.partial(jax.jit)
 def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
-    r"""Compute $|\vec{f}(gamma)|$ for `spline` $\vec{f}$ at `gamma`.
+    r"""Compute :math`|\vec{f}(gamma)|` for `spline` :math:`\vec{f}` at `gamma`.
 
     This is the spherical coordinate at the given parameter values `gamma`. The
     output is an array with shape `(N, F)`, where `N` is the number of input
@@ -115,7 +115,7 @@ def spherical_position(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.
         \dots, F-2
 
     where :math:`R_{i+1} = \sqrt{\sum_{j=i+1}^{F-1} x_j^2}` is the partial radius from
-    the $i$-th coordinate to the last coordinate.
+    the i-th coordinate to the last coordinate.
 
     The last angular coordinate is special-cased as it only depends on the last
     two coordinates:
@@ -326,14 +326,14 @@ def speed(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
         \frac{ds}{d\gamma} = \|\frac{\vec{x}}{d\gamma'}\|
 
     If we are working in 2D in the flat-sky approximation for extragalactic
-    streams, then it is recommended for $\gamma$ to be proportional to the
-    arc-length with $\gamma \in [-1, 1] = \frac{2s}{L} - 1$, we have
+    streams, then it is recommended for :math:`\gamma` to be proportional to the
+    arc-length with :math:`\gamma \in [-1, 1] = \frac{2s}{L} - 1`, we have
 
     .. math::
 
         \frac{ds}{d\gamma} = \frac{L}{2},
 
-    where $L$ is the total arc-length of the stream.
+    where :math:`L` is the total arc-length of the stream.
 
     Parameters
     ----------
@@ -668,7 +668,7 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     r"""Compute the acceleration vector :math:`\vec{a} = d^2\vec{x}/d\gamma^2`.
 
     This is the second derivative of the spline position with respect to the
-    curve parameter $\gamma$. Equivalently, it's the derivative of the
+    curve parameter :math:`\gamma`. Equivalently, it's the derivative of the
     tangent vector:
 
     .. math::
@@ -679,7 +679,7 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     Parameters
     ----------
     spline : interpax.Interpolator1D
-        A twice-differentiable 1D spline for :math:`\vec{x}(\gamma)$`.
+        A twice-differentiable 1D spline for :math:`\vec{x}(\gamma)`.
     gamma : float
         The scalar parameter value at which to compute the acceleration.
 
@@ -728,7 +728,7 @@ def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> 
         \hat{N}(\gamma) = \frac{d\hat{T}/d\gamma}{|d\hat{T}/d\gamma|}.
 
     where :math:`\hat{T}(\gamma)` is the unit tangent vector at :math:`\gamma` and
-    $\vec{a}(\gamma)$ is the acceleration vector at :math:`\gamma`. This function is
+    :math:`\vec{a}(\gamma)` is the acceleration vector at :math:`\gamma`. This function is
     scalar. To compute the unit normal vector at multiple positions, use
     `jax.vmap`.
 
@@ -803,13 +803,13 @@ def curvature(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
 
         \kappa \hat{N} = \frac{d\hat{T}/d\gamma}{ds/d\gamma}.
 
-    Here, $\frac{d\hat{T}}{d\gamma}$ (computed by ``dThat_dgamma``)
+    Here, :math:`\frac{d\hat{T}}{d\gamma}` (computed by ``dThat_dgamma``)
     describes how the direction of the tangent changes with respect to the
-    affine parameter $\gamma$, and $\frac{ds}{d\gamma}$ (obtained from
-    state_speed) represents the state speed (i.e. the rate of change of
-    arc-length with respect to $\gamma$).
+    affine parameter :math:`\gamma`, and :math:`\frac{ds}{d\gamma}` (obtained from
+    ``state_speed``) represents the state speed (i.e. the rate of change of
+    arc-length with respect to :math:`\gamma`).
 
-    This formulation assumes that $\gamma$ is chosen to be proportional to
+    This formulation assumes that :math:`\gamma` is chosen to be proportional to
     the arc-length of the track.
 
     Parameters
