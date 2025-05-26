@@ -309,22 +309,29 @@ def speed(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     This is the norm of the tangent vector at the given position.
 
     .. math::
+
         v(\gamma) = \| \frac{d\vec{x}(\gamma)}{d\gamma} \|
         = \|\vec{T}(\gamma) \|
 
     An important note is that this is also the differential arc-length!
 
-    $$ s = \int_{\gamma_0}^{\gamma} \|\frac{\vec{x}}{d\gamma'}\| d\gamma'. $$
+    .. math::
+
+        s = \int_{\gamma_0}^{\gamma} \|\frac{\vec{x}}{d\gamma'}\| d\gamma'.
 
     Thus, the arc-length element is:
 
-    $$ \frac{ds}{d\gamma} = \|\frac{\vec{x}}{d\gamma'}\| $$
+    .. math::
+
+        \frac{ds}{d\gamma} = \|\frac{\vec{x}}{d\gamma'}\|
 
     If we are working in 2D in the flat-sky approximation for extragalactic
     streams, then it is recommended for $\gamma$ to be proportional to the
     arc-length with $\gamma \in [-1, 1] = \frac{2s}{L} - 1$, we have
 
-    $$ \frac{ds}{d\gamma} = \frac{L}{2}, $$
+    .. math::
+
+        \frac{ds}{d\gamma} = \frac{L}{2},
 
     where $L$ is the total arc-length of the stream.
 
@@ -572,10 +579,11 @@ def arc_length(
 ) -> Sz0:
     r"""Return the arc-length of the track.
 
-    $$
+    .. math::
+
         s(\gamma_0, \gamma_1) = \int_{\gamma_0}^{\gamma_1} \left\|
         \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
-    $$
+
 
     Computing the arc-length requires computing an integral over the norm of
     the tangent vector. This can be done using many different methods. We
@@ -663,11 +671,10 @@ def acceleration(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     curve parameter $\gamma$. Equivalently, it's the derivative of the
     tangent vector:
 
-    $$
-      \vec{a}(\gamma)
-      = \frac{d^2\vec{x}}{d\gamma^2}
-      = \frac{d}{d\gamma} (\frac{d\vec{x}}{d\gamma}).
-    $$
+    .. math::
+
+    \vec{a}(\gamma)= \frac{d^2\vec{x}}{d\gamma^2}
+        = \frac{d}{d\gamma} (\frac{d\vec{x}}{d\gamma}).
 
     Parameters
     ----------
@@ -716,7 +723,9 @@ def principle_unit_normal(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> 
     vector onto the plane orthogonal to the unit tangent vector, divided by its
     norm:
 
-    $$ \hat{N}(\gamma) = \frac{d\hat{T}/d\gamma}{|d\hat{T}/d\gamma|}. $$
+    .. math::
+
+        \hat{N}(\gamma) = \frac{d\hat{T}/d\gamma}{|d\hat{T}/d\gamma|}.
 
     where $\hat{T}(\gamma)$ is the unit tangent vector at $\gamma$ and
     $\vec{a}(\gamma)$ is the acceleration vector at $\gamma$. This function is
@@ -776,17 +785,23 @@ def curvature(spline: interpax.Interpolator1D, gamma: ct.Sz0, /) -> ct.SzF:
     derivative of the unit tangent vector to the derivative of the
     arc-length with respect to gamma. In other words, if
 
-    $$ \frac{d\hat{T}}{d\gamma} = \frac{ds}{d\gamma} \frac{d\hat{T}}{ds}, $$
+    .. math::
+
+        \frac{d\hat{T}}{d\gamma} = \frac{ds}{d\gamma} \frac{d\hat{T}}{ds},
 
     and since the curvature vector is defined as
 
-    $$ \frac{d\hat{T}}{ds} = \kappa \hat{N}, $$
+    .. math::
+
+        \frac{d\hat{T}}{ds} = \kappa \hat{N},
 
     where $ \kappa $ is the curvature and $ \hat{N} $ the unit normal
     vector, then dividing $ \frac{d\hat{T}}{d\gamma} $ by $
     \frac{ds}{d\gamma} $ yields
 
-    $$ \kappa \hat{N} = \frac{d\hat{T}/d\gamma}{ds/d\gamma}. $$
+    .. math::
+
+        \kappa \hat{N} = \frac{d\hat{T}/d\gamma}{ds/d\gamma}.
 
     Here, $\frac{d\hat{T}}{d\gamma}$ (computed by ``dThat_dgamma``)
     describes how the direction of the tangent changes with respect to the
