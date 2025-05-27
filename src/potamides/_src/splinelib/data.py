@@ -60,13 +60,13 @@ def point_to_point_arclenth(data: SzData2, /) -> SzGamma:
 
 
 def make_gamma_from_data(data: SzData2, /) -> SzGamma:
-    r"""Return $\gamma$, the normalized arc-length of the data.
+    r"""Return :math:`\gamma`, the normalized arc-length of the data.
 
     .. math::
 
         \gamma = 2\frac{s}{L} - 1 , \in [-1, 1]
 
-    where $s$ is the arc-length at $\gamma$ and $L$ is the total arc-length.
+    where :math:`s` is the arc-length at :math`\gamma` and :math:`L` is the total arc-length.
 
     Gamma is constructed approximately using a point-to-point approximation (the
     function `point_to_point_arclenth`).
@@ -118,7 +118,7 @@ def make_increasing_gamma_from_data(data: SzData2, /) -> tuple[SzGamma, SzGamma2
 
         \gamma = 2\frac{s}{L} - 1 , \in [-1, 1]
 
-    where $s$ is the arc-length at $\gamma$ and $L$ is the total arc-length.
+    where :math:`s` is the arc-length at :math:`\gamma` and :math:`L` is the total arc-length.
 
     Gamma is constructed approximately using a point-to-point (P2P)
     approximation (the function `point_to_point_arclenth`). Using the P2P

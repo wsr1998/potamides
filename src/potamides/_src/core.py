@@ -32,7 +32,9 @@ class AbstractTrack:
     arc-length of the track. A good definition of gamma is to normalize the
     arc-length to the range [-1, 1], such that
 
-    $$ \gamma = \frac{2s}{L} - 1, $$
+    .. math::
+
+        \gamma = \frac{2s}{L} - 1,
 
     where $s$ is the arc-length and $L$ is the total arc-length of the track.
 
@@ -140,7 +142,9 @@ class AbstractTrack:
 
         The tangent vector is defined as:
 
-        $$ T(\gamma) = \frac{d\vec{x}}{d\gamma} $$
+        .. math::
+
+            T(\gamma) = \frac{d\vec{x}}{d\gamma}
 
         Parameters
         ----------
@@ -182,10 +186,10 @@ class AbstractTrack:
 
         This is the norm of the tangent vector at the given position.
 
-        $$
+        .. math::
+
             \mathbf{v}(\gamma) = \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma}
             \right\|
-        $$
 
         An important note is that this is also equivalent to the derivative of
         the arc-length with respect to gamma.
@@ -194,24 +198,23 @@ class AbstractTrack:
         observations of extragalactic stellar streams) the differential
         arc-length is given by:
 
-        $$
+        .. math::
             s = \int_{\gamma_0}^{\gamma} \sqrt{\left(\frac{dx}{d\gamma}\right)^2
                 + \left(\frac{dy}{d\gamma}\right)^2} d\gamma.
-        $$
 
         Thus, the arc-length element is:
 
-        $$
+        .. math::
+
             \frac{ds}{d\gamma} = \sqrt{\left(\frac{dx}{d\gamma}\right)^2
                 + \left(\frac{dy}{d\gamma}\right)^2}
-        $$
 
         If $\gamma$ is proportional to the arc-length, which is a very good and
         common choice, then for $\gamma \in [-1, 1] = \frac{2s}{L} - 1$, we have
 
-        $$
+        .. math::
+
             \frac{ds}{d\gamma} = \frac{L}{2},
-        $$
 
         where $L$ is the total arc-length of the stream.
 
@@ -242,10 +245,10 @@ class AbstractTrack:
     ) -> Sz0:
         r"""Return the arc-length of the track.
 
-        $$
+        .. math::
+
             s(\gamma_0, \gamma_1) = \int_{\gamma_0}^{\gamma_1} \left\|
             \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
-        $$
 
         Computing the arc-length requires computing an integral over the norm of
         the tangent vector. This can be done using many different methods. We
@@ -279,9 +282,9 @@ class AbstractTrack:
     def total_arc_length(self) -> Sz0:
         r"""Return the total arc-length of the track.
 
-        $$
+        .. math::
+
             L = s(-1, 1) = \int_{-1}^{1} \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
-        $$
 
         This is equivalent to `arc_length` with gamma0=-1 and gamma1=1.
         The method used is the default method, which is "quad".
@@ -336,8 +339,10 @@ class AbstractTrack:
 
         The unit normal vector is defined as the normalized acceleration vector:
 
-        $$ \hat{N} = \frac{d^2\vec{x}/d\gamma^2}{\left\| d^2\vec{x}/d\gamma^2
-        \right\|} $$
+        .. math::
+
+            \hat{N} = \frac{d^2\vec{x}/d\gamma^2}{\left\| d^2\vec{x}/d\gamma^2
+                    \right\|}
 
         Parameters
         ----------
@@ -381,17 +386,23 @@ class AbstractTrack:
         derivative of the unit tangent vector to the derivative of the
         arc-length with respect to gamma. In other words, if
 
-        $$ \frac{d\hat{T}}{d\gamma} = \frac{ds}{d\gamma} \frac{d\hat{T}}{ds}, $$
+        .. math::
+
+            \frac{d\hat{T}}{d\gamma} = \frac{ds}{d\gamma} \frac{d\hat{T}}{ds},
 
         and since the curvature vector is defined as
 
-        $$ \frac{d\hat{T}}{ds} = \kappa \hat{N}, $$
+        .. math::
+
+            \frac{d\hat{T}}{ds} = \kappa \hat{N},
 
         where $ \kappa $ is the curvature and $ \hat{N} $ the unit normal
         vector, then dividing $ \frac{d\hat{T}}{d\gamma} $ by $
         \frac{ds}{d\gamma} $ yields
 
-        $$ \kappa \hat{N} = \frac{d\hat{T}/d\gamma}{ds/d\gamma}. $$
+        .. math::
+
+            \kappa \hat{N} = \frac{d\hat{T}/d\gamma}{ds/d\gamma}.
 
         Here, $\frac{d\hat{T}}{d\gamma}$ (computed by ``dThat_dgamma``)
         describes how the direction of the tangent changes with respect to the
