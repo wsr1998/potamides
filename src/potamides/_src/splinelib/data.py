@@ -13,7 +13,7 @@ from typing import TypeAlias
 import jax.numpy as jnp
 from jaxtyping import Array, Real
 
-from streamcurvature._src.custom_types import SzData2, SzN
+from potamides._src.custom_types import SzData2, SzN
 
 SzGamma: TypeAlias = Real[Array, "data-1"]
 SzGamma2: TypeAlias = Real[Array, "data-1 2"]

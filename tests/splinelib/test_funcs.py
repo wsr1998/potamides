@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import pytest
 from jaxtyping import Array, Real
 
-import streamcurvature.splinelib as splib
+import potamides.splinelib as splib
 
 SzGamma: TypeAlias = Real[Array, "gamma"]
 SzGamma2: TypeAlias = Real[Array, "gamma 2"]

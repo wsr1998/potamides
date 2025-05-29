@@ -1,4 +1,4 @@
-# streamcurvature
+# potamides
 
 ```{toctree}
 :maxdepth: 2

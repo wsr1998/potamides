@@ -85,11 +85,11 @@ class AbstractTrack:
 
         >>> import jax.numpy as jnp
         >>> import interpax
-        >>> import streamcurvature as sc
+        >>> import potamides as ptd
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
         >>> xy = 2  * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
-        >>> track = sc.Track(gamma, xy)
+        >>> track = ptd.Track(gamma, xy)
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
         >>> print(track(gamma).round(2))
@@ -114,7 +114,7 @@ class AbstractTrack:
         >>> import jax
         >>> import jax.numpy as jnp
         >>> import interpax
-        >>> import streamcurvature.splinelib as splib
+        >>> import potamides.splinelib as splib
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
         >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
@@ -158,12 +158,12 @@ class AbstractTrack:
 
         >>> import jax.numpy as jnp
         >>> import interpax
-        >>> import streamcurvature as sc
+        >>> import potamides as ptd
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
         >>> x = 2 * jnp.cos(gamma)
         >>> y = 2 * jnp.sin(gamma)
-        >>> track = sc.Track(gamma, jnp.stack([x, y], axis=-1))
+        >>> track = ptd.Track(gamma, jnp.stack([x, y], axis=-1))
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
         >>> tangents = track.tangent(gamma)
@@ -313,11 +313,11 @@ class AbstractTrack:
         --------
         >>> import jax
         >>> import jax.numpy as jnp
-        >>> import streamcurvature as sc
+        >>> import potamides as ptd
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
         >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
-        >>> track = sc.Track(gamma, xy)
+        >>> track = ptd.Track(gamma, xy)
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
         >>> acc = track.acceleration(gamma)
@@ -353,11 +353,11 @@ class AbstractTrack:
         --------
         >>> import jax
         >>> import jax.numpy as jnp
-        >>> import streamcurvature as sc
+        >>> import potamides as ptd
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
         >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
-        >>> track = sc.Track(gamma, xy)
+        >>> track = ptd.Track(gamma, xy)
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
         >>> Nhat = track.principle_unit_normal(gamma)
@@ -416,11 +416,11 @@ class AbstractTrack:
         --------
         >>> import jax
         >>> import jax.numpy as jnp
-        >>> import streamcurvature as sc
+        >>> import potamides as ptd
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
         >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
-        >>> track = sc.Track(gamma, xy)
+        >>> track = ptd.Track(gamma, xy)
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
         >>> kappa = track.curvature(gamma)
@@ -451,11 +451,11 @@ class AbstractTrack:
         --------
         >>> import jax
         >>> import jax.numpy as jnp
-        >>> import streamcurvature as sc
+        >>> import potamides as ptd
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
         >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
-        >>> track = sc.Track(gamma, xy)
+        >>> track = ptd.Track(gamma, xy)
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
         >>> kappa = track.kappa(gamma)
