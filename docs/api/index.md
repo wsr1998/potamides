@@ -20,7 +20,9 @@ accelerations.md
 .. currentmodule:: potamides
 
 .. automodule:: potamides
+    :members:
+    :undoc-members:
+    :show-inheritance:
     :exclude-members: aval, default, materialise, enable_materialise
-    :noindex:
 
 ```
