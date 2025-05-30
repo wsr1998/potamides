@@ -73,18 +73,20 @@ pip install -e .  # editable mode
 
 ### Fitting the Stream
 
+### Get the likelihood
+
 ## Citation
 
 ...
 
 ## Ecosystem
 
-### `unxt`'s Dependencies
+### `potamides`'s Dependencies
 
 - [Equinox][equinox]: one-stop JAX library, for everything that isn't already in
   core JAX.
 
-### `unxt`'s Dependents
+### `potamides`'s Dependents
 
 - [coordinax][coordinax]: Coordinates in JAX.
 - [galax][galax]: Galactic dynamics in JAX.
