@@ -80,7 +80,7 @@ def compute_ln_likelihood(
     gravitational potential, the likelihood is a goodness of fit measure of the
     potential.
 
-    Parameters:
+    Parameters
     ----------
     kappa_hat
       An array of shape (N, 2). The unit curvature vector (or named normal
@@ -99,8 +99,8 @@ def compute_ln_likelihood(
     debug:
       Whether to print debug information. Default `False`.
 
-    Returns:
-    ----------
+    Returns
+    -------
     Array[real, (n,)]
       The computed logarithm of the likelihood.
 

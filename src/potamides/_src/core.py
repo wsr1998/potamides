@@ -32,9 +32,11 @@ class AbstractTrack:
     arc-length of the track. A good definition of gamma is to normalize the
     arc-length to the range [-1, 1], such that
 
-    $$ \gamma = \frac{2s}{L} - 1, $$
+    .. math::
 
-    where $s$ is the arc-length and $L$ is the total arc-length of the track.
+        \gamma = \frac{2s}{L} - 1,
+
+    where :math:`s` is the arc-length and :math:`L` is the total arc-length of the track.
 
     Parameters
     ----------
@@ -107,7 +109,7 @@ class AbstractTrack:
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     @ft.partial(jax.jit)
     def spherical_position(self, gamma: SzN, /) -> SzN2:
-        r"""Compute $|\vec{f}(gamma)|$ at `gamma`.
+        r"""Compute :math:`|\vec{f}(gamma)|` at :math:`gamma`.
 
         Examples
         --------
@@ -140,7 +142,9 @@ class AbstractTrack:
 
         The tangent vector is defined as:
 
-        $$ T(\gamma) = \frac{d\vec{x}}{d\gamma} $$
+        .. math::
+
+            T(\gamma) = \frac{d\vec{x}}{d\gamma}
 
         Parameters
         ----------
@@ -182,10 +186,10 @@ class AbstractTrack:
 
         This is the norm of the tangent vector at the given position.
 
-        $$
+        .. math::
+
             \mathbf{v}(\gamma) = \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma}
             \right\|
-        $$
 
         An important note is that this is also equivalent to the derivative of
         the arc-length with respect to gamma.
@@ -194,29 +198,28 @@ class AbstractTrack:
         observations of extragalactic stellar streams) the differential
         arc-length is given by:
 
-        $$
+        .. math::
             s = \int_{\gamma_0}^{\gamma} \sqrt{\left(\frac{dx}{d\gamma}\right)^2
                 + \left(\frac{dy}{d\gamma}\right)^2} d\gamma.
-        $$
 
         Thus, the arc-length element is:
 
-        $$
+        .. math::
+
             \frac{ds}{d\gamma} = \sqrt{\left(\frac{dx}{d\gamma}\right)^2
                 + \left(\frac{dy}{d\gamma}\right)^2}
-        $$
 
-        If $\gamma$ is proportional to the arc-length, which is a very good and
-        common choice, then for $\gamma \in [-1, 1] = \frac{2s}{L} - 1$, we have
+        If :math:`\gamma` is proportional to the arc-length, which is a very good and
+        common choice, then for :math:`\gamma \in [-1, 1] = \frac{2s}{L} - 1`, we have
 
-        $$
+        .. math::
+
             \frac{ds}{d\gamma} = \frac{L}{2},
-        $$
 
-        where $L$ is the total arc-length of the stream.
+        where :math:`L` is the total arc-length of the stream.
 
         Since this is a constant, there is no need to compute this function. It
-        is sufficient to just use $L/2$. This function is provided for
+        is sufficient to just use :math:`L/2`. This function is provided for
         completeness.
 
         Parameters
@@ -242,10 +245,10 @@ class AbstractTrack:
     ) -> Sz0:
         r"""Return the arc-length of the track.
 
-        $$
+        .. math::
+
             s(\gamma_0, \gamma_1) = \int_{\gamma_0}^{\gamma_1} \left\|
             \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
-        $$
 
         Computing the arc-length requires computing an integral over the norm of
         the tangent vector. This can be done using many different methods. We
@@ -279,9 +282,9 @@ class AbstractTrack:
     def total_arc_length(self) -> Sz0:
         r"""Return the total arc-length of the track.
 
-        $$
+        .. math::
+
             L = s(-1, 1) = \int_{-1}^{1} \left\| \frac{d\mathbf{x}(\gamma)}{d\gamma} \right\| \, d\gamma
-        $$
 
         This is equivalent to `arc_length` with gamma0=-1 and gamma1=1.
         The method used is the default method, which is "quad".
@@ -297,7 +300,7 @@ class AbstractTrack:
     def acceleration(self, gamma: Sz0, /) -> Sz2:
         r"""Return the acceleration vector at a given position along the stream.
 
-        The acceleration vector is defined as: $ \frac{d^2\vec{x}}{d\gamma^2} $
+        The acceleration vector is defined as: :math:`\frac{d^2\vec{x}}{d\gamma^2}`
 
         Parameters
         ----------
@@ -307,7 +310,7 @@ class AbstractTrack:
         Returns
         -------
         Array[float, (N, 2)]
-            The acceleration vector $\vec{a}$ at $\gamma$.
+            The acceleration vector :math:`\vec{a}` at :math:`\gamma`.
 
         Examples
         --------
@@ -336,8 +339,10 @@ class AbstractTrack:
 
         The unit normal vector is defined as the normalized acceleration vector:
 
-        $$ \hat{N} = \frac{d^2\vec{x}/d\gamma^2}{\left\| d^2\vec{x}/d\gamma^2
-        \right\|} $$
+        .. math::
+
+            \hat{N} = \frac{d^2\vec{x}/d\gamma^2}{\left\| d^2\vec{x}/d\gamma^2
+                    \right\|}
 
         Parameters
         ----------
@@ -347,7 +352,7 @@ class AbstractTrack:
         Returns
         -------
         Array[float, (N, 2)]
-            The unit normal vector $\hat{N}$ at $\gamma$.
+            The unit normal vector :math:`\hat{N}` at :math:`\gamma`.
 
         Examples
         --------
@@ -381,25 +386,31 @@ class AbstractTrack:
         derivative of the unit tangent vector to the derivative of the
         arc-length with respect to gamma. In other words, if
 
-        $$ \frac{d\hat{T}}{d\gamma} = \frac{ds}{d\gamma} \frac{d\hat{T}}{ds}, $$
+        .. math::
+
+            \frac{d\hat{T}}{d\gamma} = \frac{ds}{d\gamma} \frac{d\hat{T}}{ds},
 
         and since the curvature vector is defined as
 
-        $$ \frac{d\hat{T}}{ds} = \kappa \hat{N}, $$
+        .. math::
 
-        where $ \kappa $ is the curvature and $ \hat{N} $ the unit normal
-        vector, then dividing $ \frac{d\hat{T}}{d\gamma} $ by $
-        \frac{ds}{d\gamma} $ yields
+            \frac{d\hat{T}}{ds} = \kappa \hat{N},
 
-        $$ \kappa \hat{N} = \frac{d\hat{T}/d\gamma}{ds/d\gamma}. $$
+        where :math:`\kappa` is the curvature and :math:`\hat{N}` the unit normal
+        vector, then dividing :math:`\frac{d\hat{T}}{d\gamma}` by :math:`
+        \frac{ds}{d\gamma}` yields
 
-        Here, $\frac{d\hat{T}}{d\gamma}$ (computed by ``dThat_dgamma``)
+        .. math::
+
+            \kappa \hat{N} = \frac{d\hat{T}/d\gamma}{ds/d\gamma}.
+
+        Here, :math:`\frac{d\hat{T}}{d\gamma}` (computed by ``dThat_dgamma``)
         describes how the direction of the tangent changes with respect to the
-        affine parameter $\gamma$, and $\frac{ds}{d\gamma}$ (obtained from
+        affine parameter :math:`\gamma`, and :math:`\frac{ds}{d\gamma}` (obtained from
         state_speed) represents the state speed (i.e. the rate of change of
-        arc-length with respect to $\gamma$).
+        arc-length with respect to :math:`\gamma`).
 
-        This formulation assumes that $\gamma$ is chosen to be proportional to
+        This formulation assumes that :math:`\gamma` is chosen to be proportional to
         the arc-length of the track.
 
         Parameters
@@ -410,7 +421,7 @@ class AbstractTrack:
         Returns
         -------
         Array[float, (N, 2)]
-            The curvature vector $\kappa$ at $\gamma$.
+            The curvature vector :math:`\kappa` at :math:`\gamma`.
 
         Examples
         --------
@@ -435,7 +446,7 @@ class AbstractTrack:
     @ft.partial(jnp.vectorize, signature="()->()", excluded=(0,))
     @ft.partial(jax.jit)
     def kappa(self, gamma: Sz0, /) -> Sz0:
-        r"""Return the scalar curvature $\kappa(\gamma)$ along the track.
+        r"""Return the scalar curvature :math:`\kappa(\gamma)` along the track.
 
         Parameters
         ----------
@@ -445,7 +456,7 @@ class AbstractTrack:
         Returns
         -------
         Array[float, (N, 2)]
-            The scalar curvature $\kappa$ at $\gamma$.
+            The scalar curvature :math:`\kappa` at :math:`\gamma`.
 
         Examples
         --------
