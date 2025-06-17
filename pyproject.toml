@@ -102,6 +102,7 @@
   xfail_strict = true
   filterwarnings = [
     "error",
+    "ignore:.*jax\\.interpreters\\.xla\\.pytype_aval_mappings is deprecated.*:DeprecationWarning"
   ]
   log_cli_level = "INFO"
   testpaths = [
