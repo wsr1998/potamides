@@ -149,11 +149,12 @@ def data_distance_cost_fn(
 ) -> Sz0:
     r"""Cost function to minimize that compares data to spline fit.
 
-    $$ \text{cost} = \sum_i \left( \frac{y_i - f(\gamma_i)}{\sigma_i} \right)^2
-    $$
+    .. math::
 
-    where $$y_i$ is the target data, $f(\gamma_i)$ is the spline evaluated at
-    $\gamma_i$, and $\sigma_i$ is the uncertainty on $y_i$.
+        \text{cost} = \sum_i \left( \frac{y_i - f(\gamma_i)}{\sigma_i} \right)^2
+
+    where :math:`y_i` is the target data, :math:`f(\gamma_i)` is the spline evaluated at
+    :math:`\gamma_i`, and :math:`\sigma_i` is the uncertainty on :math:`y_i`.
 
     Parameters
     ----------
@@ -209,14 +210,15 @@ def concavity_change_cost_fn(
     r"""Cost function to penalize changes in signed curvature for 2D curves.
 
     The integrand of the cost function is the derivative of the arctangent of
-    the signed curvature multiplied by a large number $\lambda$.
+    the signed curvature multiplied by a large number :math:`\lambda`.
 
-    $$ \left( \frac{d}{ds} \atan\left(\lambda \kappa_{\text{signed}}(s)\right)
-    \right)^2 $$
+    .. math::
+        \left( \frac{d}{ds} \atan\left(\lambda \kappa_{\text{signed}}(s)\right)
+        \right)^2
 
-    where $\kappa_{\text{signed}}(s)$ is the signed curvature at $s$ and
-    $\lambda$ is a large number that controls the width of the smoothing. The
-    $\atan$ function differentiably mimics the undifferetiable $\text{sign}$
+    where :math:`\kappa_{\text{signed}}(s)` is the signed curvature at :math:`s` and
+    :math:`\lambda` is a large number that controls the width of the smoothing. The
+    :math:`\atan` function differentiably mimics the undifferetiable :math:\text{sign}`
     function. The cost is the integral over the arc-length.
 
     Parameters
