@@ -27,19 +27,19 @@
     "version",
   ]
   dependencies = [
-    "astropy>=6.1.7",
+    "astropy>=7.0",
     "galax",
-    "interpax>=0.3.7",
-    "jax<0.4.36",
-    "jaxtyping>=0.2.38",
+    "interpax>=0.3.8",
+    "jax>=0.5.3",
+    "jaxtyping>=0.3.1",
     "matplotlib>=3.10.1",
     "numpy>=2.2.3",
     "optax>=0.2.4",
     "scipy>=1.15.2",
-    "typing-extensions>=4.12.2",
-    "unxt>=1.3.2",
+    "typing-extensions>=4.13.2",
+    "unxt>=1.6.2",
     "xmmutablemap>=0.1",
-  ]
+]
 
   [project.urls]
     Homepage      = "https://github.com/wsr1998/potamides"
@@ -85,7 +85,7 @@
 
 
 [tool.uv.sources]
-  galax = { git = "https://github.com/GalacticDynamics/galax.git" }
+  galax = { git = "https://github.com/GalacticDynamics/galax.git", rev = "main" }
 
 
 [tool.pytest.ini_options]
@@ -102,6 +102,7 @@
   xfail_strict = true
   filterwarnings = [
     "error",
+    "ignore:.*jax\\.interpreters\\.xla\\.pytype_aval_mappings is deprecated.*:DeprecationWarning"
   ]
   log_cli_level = "INFO"
   testpaths = [
