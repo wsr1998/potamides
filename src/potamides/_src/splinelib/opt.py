@@ -366,7 +366,7 @@ def optimize_spline_knots(
     init_gamma: SzN,
     cost_args: tuple[Any, ...],
     *,
-    cost_kwargs: ImmutableMap[str, Any] | None = None,
+    cost_kwargs: ImmutableMap[str, Any] | tuple[tuple[str, Any], ...] | None = None,
     optimizer: optax.GradientTransformation = DEFAULT_OPTIMIZER,
     nsteps: int = 10_000,
     fixed_mask: tuple[bool, ...] | None = None,
@@ -420,7 +420,7 @@ def optimize_spline_knots(
         The number of optimization steps to take. Defaults to 10_000.
 
     """
-    cost_kw = {} if cost_kwargs is None else cost_kwargs
+    cost_kw = ImmutableMap({} if cost_kwargs is None else cost_kwargs)
 
     # Determine fixed/free indices using fixed_mask argument
     free_knots_init, reconstruct_knots = _free_and_fixed_params(
