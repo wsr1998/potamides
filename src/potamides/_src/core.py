@@ -492,16 +492,18 @@ class AbstractTrack:
         *,
         ax: plt.Axes | None = None,
         label: str | None = r"$\vec{x}$($\gamma$)",
+        c: str = "red",
+        knot_size: int = 10,
     ) -> plt.Axes:
         """Plot the track itself."""
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
         # Plot track itself
-        ax.plot(*self(gamma).T, c="red", ls="-", lw=1, label=label)
+        ax.plot(*self(gamma).T, c=c, ls="-", lw=1, label=label)
 
         # Add the knot points
-        ax.scatter(*self.knots.T, s=10, c="red", zorder=10)
+        ax.scatter(*self.knots.T, s=knot_size, c=c, zorder=10)
 
         return ax
 
