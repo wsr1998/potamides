@@ -492,16 +492,18 @@ class AbstractTrack:
         *,
         ax: plt.Axes | None = None,
         label: str | None = r"$\vec{x}$($\gamma$)",
+        c: str = "red",
+        knot_size: int = 10,
     ) -> plt.Axes:
         """Plot the track itself."""
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
         # Plot track itself
-        ax.plot(*self(gamma).T, c="red", ls="-", lw=1, label=label)
+        ax.plot(*self(gamma).T, c=c, ls="-", lw=1, label=label)
 
         # Add the knot points
-        ax.scatter(*self.knots.T, s=10, c="red", zorder=10)
+        ax.scatter(*self.knots.T, s=knot_size, c=c, zorder=10)
 
         return ax
 
@@ -576,6 +578,7 @@ class AbstractTrack:
         vec_scale: float = 30,
         ax: plt.Axes | None = None,
         label: str | None = r"$\vec{a}$ (local)",
+        color: str = "green",
     ) -> plt.Axes:
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
@@ -594,7 +597,7 @@ class AbstractTrack:
             pos[:, 1],
             acc_xy_unit[:, 0],
             acc_xy_unit[:, 1],
-            color="green",
+            color=color,
             width=vec_width,
             scale=vec_scale,
             label=label,
@@ -613,6 +616,8 @@ class AbstractTrack:
         labels: bool = True,
         show_tangents: bool = True,
         show_curvature: bool = True,
+        curvature_kwargs: dict[str, Any] | None = None,
+        acceleration_kwargs: dict[str, Any] | None = None,
     ) -> plt.Axes:
         r"""Plot the track, tangents, curvature, and local accelerations.
 
@@ -671,6 +676,7 @@ class AbstractTrack:
                 vec_width=vec_width,
                 vec_scale=vec_scale,
                 label=r"$\hat{K}$" if labels else None,
+                **(curvature_kwargs or {}),
             )
 
         # Plot the local acceleration, assuming a potential
@@ -683,6 +689,7 @@ class AbstractTrack:
                 vec_width=vec_width,
                 vec_scale=vec_scale,
                 label=r"$\vec{a}$ (local)" if labels else None,
+                **(acceleration_kwargs or {}),
             )
 
         return ax
