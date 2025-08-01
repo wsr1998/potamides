@@ -578,6 +578,7 @@ class AbstractTrack:
         vec_scale: float = 30,
         ax: plt.Axes | None = None,
         label: str | None = r"$\vec{a}$ (local)",
+        color: str = "green",
     ) -> plt.Axes:
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
@@ -596,7 +597,7 @@ class AbstractTrack:
             pos[:, 1],
             acc_xy_unit[:, 0],
             acc_xy_unit[:, 1],
-            color="green",
+            color=color,
             width=vec_width,
             scale=vec_scale,
             label=label,
@@ -616,6 +617,7 @@ class AbstractTrack:
         show_tangents: bool = True,
         show_curvature: bool = True,
         curvature_kwargs: dict[str, Any] | None = None,
+        acceleration_kwargs: dict[str, Any] | None = None,
     ) -> plt.Axes:
         r"""Plot the track, tangents, curvature, and local accelerations.
 
@@ -668,16 +670,13 @@ class AbstractTrack:
                 label=r"$\hat{T}$" if labels else None,
             )
         if show_curvature:
-            # Process curvature_kwargs
-            curve_kw = {} if curvature_kwargs is None else curvature_kwargs
-
             self.plot_curvature(
                 gamma,
                 ax=ax,
                 vec_width=vec_width,
                 vec_scale=vec_scale,
                 label=r"$\hat{K}$" if labels else None,
-                **curve_kw,
+                **(curvature_kwargs or {}),
             )
 
         # Plot the local acceleration, assuming a potential
@@ -690,6 +689,7 @@ class AbstractTrack:
                 vec_width=vec_width,
                 vec_scale=vec_scale,
                 label=r"$\vec{a}$ (local)" if labels else None,
+                **(acceleration_kwargs or {}),
             )
 
         return ax

@@ -127,6 +127,7 @@ def plot_acceleration_field(
     ax: plt.Axes | None = None,
     vec_width: float = 0.003,
     vec_scale: float = 30,
+    color: str = "#808F80",
 ) -> plt.Axes:
     """Plot the acceleration field of a potential."""
     if ax is None:
@@ -149,7 +150,7 @@ def plot_acceleration_field(
         Y,
         acc_hat_grid[:, 0],
         acc_hat_grid[:, 1],
-        color=(0.5, 0.56, 0.5),  # gray-green
+        color=color,
         width=vec_width,
         scale=vec_scale,
         label=r"$\vec{a}$ (global)",
