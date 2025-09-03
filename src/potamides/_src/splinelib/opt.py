@@ -197,7 +197,7 @@ def signed_kappa_scalar(spline: interpax.Interpolator1D, g: Sz0) -> Sz0:
 
 
 # TODO: speed up a lot
-@ft.partial(jax.jit)
+@ft.partial(jax.jit, static_argnames=("num_points",))
 def concavity_change_cost_fn(
     knots: SzN2,
     gamma: SzN,
@@ -265,7 +265,10 @@ def _no_concavity_change_cost_fn(*_: Any) -> Sz0:
     return jnp.zeros(())
 
 
-@ft.partial(jax.jit)
+@ft.partial(
+    jax.jit,
+    # static_argnames=("sigmas", "data_weight", "concavity_weight", "concavity_scale"),
+)
 def default_cost_fn(
     knots: SzN2,
     gamma: SzN,

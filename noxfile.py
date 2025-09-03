@@ -9,8 +9,10 @@ import nox
 DIR = Path(__file__).parent.resolve()
 
 nox.needs_version = ">=2024.3.2"
-nox.options.sessions = ["lint", "pylint", "tests"]
-nox.options.default_venv_backend = "uv|virtualenv"
+nox.options.sessions = ["lint", "pylint", "test", "make_test_arraydiff"]
+
+# ===================================================================
+# Lint
 
 
 @nox.session
@@ -35,22 +37,47 @@ def pylint(session: nox.Session) -> None:
     session.run("pylint", "potamides", *session.posargs)
 
 
-@nox.session
-def tests(session: nox.Session) -> None:
-    """Run the unit and regular tests."""
-    session.run("uv", "sync", "--group", "test")
+# ===================================================================
+# Tests
+
+
+@nox.session(venv_backend="uv")
+def test(session: nox.Session) -> None:
+    """
+    Run the unit and regular tests.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=test",
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
     session.run("pytest", *session.posargs)
 
 
-@nox.session
-def tests_generate_arraydiff(session: nox.Session) -> None:
-    """Generate the `pytest-arraydiff` files."""
-    session.run("uv", "sync", "--group", "test")
+@nox.session(venv_backend="uv")
+def make_test_arraydiff(session: nox.Session) -> None:
+    """
+    Generate the `pytest-arraydiff` files.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=test",
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
     session.run(
         "pytest",
+        "-m",
+        "array_compare",
         "--arraydiff-generate-path=tests/data",
         *session.posargs,
     )
+
+
+# ===================================================================
 
 
 @nox.session(reuse_venv=True)
