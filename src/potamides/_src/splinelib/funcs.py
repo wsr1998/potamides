@@ -24,6 +24,7 @@ __all__ = [  # noqa: RUF022
 import functools as ft
 from typing import Any, Final, Literal
 
+import equinox as eqx
 import interpax
 import jax
 import jax.numpy as jnp
@@ -631,14 +632,19 @@ def arc_length(
     4.0
 
     """
+    method = eqx.error_if(
+        method, method not in _ARC_LENGTH_METHODS, "Invalid arc length method."
+    )
+    index = _ARC_LENGTH_METHODS.index(method)
     kw = method_kw if method_kw is not None else {}
+
     branches = [
         jtu.Partial(arc_length_p2p, **kw),
         jtu.Partial(arc_length_quadtrature, **kw),
         jtu.Partial(arc_length_odeint, **kw),
     ]
     operands = (spline, gamma0, gamma1)
-    return jax.lax.switch(_ARC_LENGTH_METHODS.index(method), branches, *operands)
+    return jax.lax.switch(index, branches, *operands)
 
 
 # ============================================================================

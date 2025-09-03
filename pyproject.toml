@@ -49,26 +49,30 @@
 
 
 [dependency-groups]
-  test = [
-    "optional-dependencies>=0.3.2",
-    "pytest >=6",
-    "pytest-arraydiff>=0.6.1",
-    "pytest-cov >=3",
-    "sybil>=9.1.0",
-  ]
-  dev = [
-    "ipykernel>=6.29.5",
-    "pre-commit>=4.1.0",
-    "pytest >=8",
-    "pytest-cov >=3",
-  ]
-  docs = [
-    "furo>=2023.08.17",
-    "myst_parser>=0.13",
-    "sphinx>=7.0",
-    "sphinx_autodoc_typehints",
-    "sphinx_copybutton",
-  ]
+dev = [
+  "ipykernel>=6.29.5",
+  "pre-commit>=4.1.0",
+  { include-group = "docs" },
+  { include-group = "nox" },
+  { include-group = "test" },
+]
+docs = [
+  "furo>=2023.08.17",
+  "myst_parser>=0.13",
+  "sphinx>=7.0",
+  "sphinx_autodoc_typehints",
+  "sphinx_copybutton",
+]
+nox = [
+  "nox[uv]>=2025.5.1",
+]
+test = [
+  "optional-dependencies>=0.3.2",
+  "pytest>=8.3",
+  "pytest-arraydiff>=0.6.1",
+  "pytest-cov>=6.0.0",
+  "sybil[pytest]>=9.1.0",
+]
 
 
 [build-system]
