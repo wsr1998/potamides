@@ -17,7 +17,7 @@ import numpy as np
 from jaxtyping import Array, Real
 from matplotlib.cm import ScalarMappable
 
-from .custom_types import SzN, SzN2
+from .custom_types import SzGamma, SzN, SzN2
 
 PI_ON_2 = np.pi / 2
 
@@ -57,7 +57,7 @@ PI_ON_2 = np.pi / 2
 
 
 def plot_theta_of_gamma(
-    gamma: Real[Array, "gamma"],
+    gamma: SzGamma,
     param: Real[Array, "param"],
     angles: Real[Array, "param gamma"],
     *,

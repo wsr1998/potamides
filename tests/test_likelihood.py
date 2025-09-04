@@ -9,6 +9,10 @@ from jaxtyping import Array, Float, Int, Real
 import potamides as ptd
 from potamides._src.custom_types import BoolSzGamma, SzGamma2
 
+# pytest.mark.array_compare generates errors b/c of an old-style hookwrapper
+# teardown.
+pytestmark = pytest.mark.filterwarnings("ignore::pluggy.PluggyTeardownRaisedWarning")
+
 Sz1: TypeAlias = Float[Array, "1"]
 SzS: TypeAlias = Real[Array, "S"]  # type: ignore[name-defined]
 IntSzS: TypeAlias = Int[Array, "S"]  # type: ignore[name-defined]

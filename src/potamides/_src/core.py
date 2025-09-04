@@ -16,10 +16,10 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import matplotlib.pyplot as plt
-from jaxtyping import Array, Bool, Real
+from jaxtyping import Array, Bool
 
 from . import splinelib
-from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2
+from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2, SzNF
 
 log2pi = jnp.log(2 * jnp.pi)
 
@@ -154,7 +154,7 @@ class AbstractTrack:
         return self.ridge_line.x
 
     @property
-    def knots(self) -> Real[Array, "N F"]:
+    def knots(self) -> SzNF:
         """Return the knot points along the track."""
         return self.ridge_line.f
 
@@ -187,7 +187,7 @@ class AbstractTrack:
         """
         return self.ridge_line(gamma)
 
-    def __call__(self, gamma: SzN) -> Real[Array, "N 2"]:
+    def __call__(self, gamma: SzN) -> SzN2:
         """Return the position at a given gamma."""
         return self.positions(gamma)
 
