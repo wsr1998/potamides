@@ -1084,7 +1084,139 @@ class AbstractTrack:
 @ft.partial(jtu.register_dataclass, data_fields=["ridge_line"], meta_fields=[])
 @dataclass(frozen=True, slots=True, eq=False)
 class Track(AbstractTrack):
-    """A track with data and a spline."""
+    r"""Concrete implementation of a parametric track using spline interpolation.
+
+    This class represents a smooth parametric curve in 2D space using cubic spline
+    interpolation. It provides a concrete implementation of the AbstractTrack
+    interface with automatic spline construction from data points or direct
+    spline specification.
+
+    The track is parameterized by gamma values and uses cubic2 spline interpolation
+    to ensure twice-differentiability, which is required for computing curvature
+    vectors and other geometric properties.
+
+    Parameters
+    ----------
+    gamma : Array[float, "N"], optional
+        The parameter values along the track. Must be provided together with `knots`
+        if `ridge_line` is not specified.
+    knots : Array[float, "N F"], optional
+        The position data points corresponding to gamma values, where F is the
+        spatial dimension (typically 2 for x,y coordinates). Must be provided
+        together with `gamma` if `ridge_line` is not specified.
+    ridge_line : interpax.Interpolator1D, optional
+        Pre-constructed spline interpolator. If provided, `gamma` and `knots`
+        must be None.
+
+    Raises
+    ------
+    ValueError
+        If neither (`gamma`, `knots`) nor `ridge_line` is provided, or if both
+        are provided simultaneously.
+    ValueError
+        If the spline method is not "cubic2" (required for curvature computation).
+
+    Examples
+    --------
+    Create a circular track from parametric data:
+
+    >>> import jax.numpy as jnp
+    >>> import potamides as ptd
+
+    >>> # Generate circle data
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 100)
+    >>> x = 3 * jnp.cos(gamma)
+    >>> y = 3 * jnp.sin(gamma)
+    >>> knots = jnp.stack([x, y], axis=-1)
+    >>> track = ptd.Track(gamma, knots)
+
+    >>> # Evaluate track at specific points
+    >>> test_gamma = jnp.array([0, jnp.pi/2, jnp.pi])
+    >>> positions = track(test_gamma)
+    >>> print("Positions:", positions.round(2))
+    Positions: [[ 3.  0.]
+                [ 0.  3.]
+                [-3.  0.]]
+
+    Create a sinusoidal track:
+
+    >>> gamma = jnp.linspace(-1, 1, 50)
+    >>> x = gamma
+    >>> y = jnp.sin(3 * jnp.pi * gamma)
+    >>> knots = jnp.stack([x, y], axis=-1)
+    >>> track = ptd.Track(gamma, knots)
+
+    >>> # Compute geometric properties
+    >>> gamma_test = jnp.array([-0.5, 0, 0.5])
+    >>> tangents = track.tangent(gamma_test)
+    >>> curvatures = track.kappa(gamma_test)
+    >>> print("Curvatures:", curvatures.round(3))
+    Curvatures: [88.684  0.    88.684]
+
+    Create from an existing spline:
+
+    >>> import interpax
+    >>> gamma = jnp.linspace(0, 1, 20)
+    >>> y = gamma**2
+    >>> knots = jnp.stack([gamma, y], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
+    >>> track = ptd.Track(ridge_line=spline)
+
+    Track properties and methods:
+
+    >>> print("Gamma range:", track.gamma.min(), "to", track.gamma.max())
+    Gamma range: 0.0 to 1.0
+    >>> print("Number of knots:", len(track.knots))
+    Number of knots: 20
+    >>> arc_length = track.total_arc_length
+    >>> print("Total arc length:", arc_length.round(3))
+    Total arc length: 1.479
+
+    Visualization example:
+
+    .. plot::
+       :include-source:
+
+       import jax.numpy as jnp
+       import potamides as ptd
+       import matplotlib.pyplot as plt
+
+       # Create a spiral track
+       gamma = jnp.linspace(0, 4*jnp.pi, 200)
+       r = 1 + 0.3 * gamma
+       x = r * jnp.cos(gamma)
+       y = r * jnp.sin(gamma)
+       knots = jnp.stack([x, y], axis=-1)
+       track = ptd.Track(gamma, knots)
+
+       # Plot the track with geometric vectors
+       fig, ax = plt.subplots(figsize=(10, 10))
+       gamma_plot = jnp.linspace(0, 4*jnp.pi, 400)
+       gamma_vectors = jnp.linspace(0, 4*jnp.pi, 20)
+
+       track.plot_all(gamma_vectors, ax=ax, vec_scale=10)
+       ax.set_aspect('equal')
+       ax.set_title('Spiral Track with Geometric Properties')
+       plt.tight_layout()
+       plt.show()
+
+    See Also
+    --------
+    AbstractTrack : Base class defining the track interface
+    interpax.Interpolator1D : The underlying spline interpolation class
+
+    Notes
+    -----
+    The Track class is designed to work seamlessly with JAX transformations
+    including jit compilation, automatic differentiation, and vectorization.
+    All geometric computations are performed using JAX operations for optimal
+    performance.
+
+    The spline interpolation uses the "cubic2" method which ensures the track
+    is twice-differentiable everywhere, enabling computation of curvature
+    vectors and higher-order geometric properties.
+
+    """
 
     #: [x,y](gamma) spline. It must be twice-differentiable (cubic2) to compute
     #: curvature vectors.
@@ -1115,7 +1247,41 @@ class Track(AbstractTrack):
 
     @classmethod
     def from_spline(cls: "type[Track]", spline: interpax.Interpolator1D, /) -> "Track":
-        """Create a Track from an existing spline."""
+        """Create a Track from an existing spline interpolator.
+
+        Parameters
+        ----------
+        spline : interpax.Interpolator1D
+            An existing spline interpolator that will be used as the ridge_line
+            for the track. The spline must use the "cubic2" method to ensure
+            twice-differentiability for curvature computations.
+
+        Returns
+        -------
+        Track
+            A new Track instance using the provided spline as its ridge_line.
+
+        Raises
+        ------
+        ValueError
+            If the spline method is not "cubic2", which is required for
+            computing curvature vectors and other second-order geometric
+            properties.
+
+        Examples
+        --------
+        >>> import jax.numpy as jnp
+        >>> import interpax
+        >>> import potamides as ptd
+
+        >>> gamma = jnp.linspace(-2, 2, 50)
+        >>> knots = jnp.stack([gamma, gamma**2], axis=-1)
+
+        >>> spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
+
+        >>> track = ptd.Track.from_spline(spline)
+
+        """
         # TODO: set directly without deconstructing
         if spline.method != "cubic2":
             msg = f"Spline must be cubic2, got {spline.method}."
