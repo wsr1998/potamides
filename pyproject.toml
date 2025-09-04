@@ -73,6 +73,7 @@ test = [
   "pytest>=8.3",
   "pytest-arraydiff>=0.6.1",
   "pytest-cov>=6.0.0",
+  "pytest-mpl>=0.17.0",
   "sybil[pytest]>=9.1.0",
 ]
 
@@ -103,12 +104,14 @@ test = [
     "-p no:doctest",    # using sybil
     "-ra",
     "--arraydiff",
-    "--arraydiff-reference-path=tests/data"
+    "--arraydiff-reference-path=tests/data",
+    "--mpl-hash-library=tests/baseline/plot_hashes.json"
   ]
   xfail_strict = true
   filterwarnings = [
     "error",
-    "ignore:.*jax\\.interpreters\\.xla\\.pytype_aval_mappings is deprecated.*:DeprecationWarning"
+    "ignore:.*jax\\.interpreters\\.xla\\.pytype_aval_mappings is deprecated.*:DeprecationWarning",
+    "ignore:No artists with labels found to put in legend.*:UserWarning"
   ]
   log_cli_level = "INFO"
   testpaths = [

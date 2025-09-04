@@ -9,7 +9,13 @@ import nox
 DIR = Path(__file__).parent.resolve()
 
 nox.needs_version = ">=2024.3.2"
-nox.options.sessions = ["lint", "pylint", "test", "make_test_arraydiff"]
+nox.options.sessions = [
+    "lint",
+    "pylint",
+    "test",
+    "make_test_arraydiff",
+    "make_test_mpl",
+]
 
 # ===================================================================
 # Lint
@@ -73,6 +79,27 @@ def make_test_arraydiff(session: nox.Session) -> None:
         "-m",
         "array_compare",
         "--arraydiff-generate-path=tests/data",
+        *session.posargs,
+    )
+
+
+@nox.session(venv_backend="uv")
+def make_test_mpl(session: nox.Session) -> None:
+    """
+    Generate the `pytest-mpl` baseline images.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=test",
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run(
+        "pytest",
+        "-m",
+        "mpl_image_compare",
+        "--mpl-generate-hash-library=/Users/nmrs/local/potamides/tests/baseline/plot_hashes.json",
         *session.posargs,
     )
 

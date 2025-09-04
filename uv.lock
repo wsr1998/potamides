@@ -1513,6 +1513,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-arraydiff" },
     { name = "pytest-cov" },
+    { name = "pytest-mpl" },
     { name = "sphinx" },
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-copybutton" },
@@ -1535,6 +1536,7 @@ test = [
     { name = "pytest" },
     { name = "pytest-arraydiff" },
     { name = "pytest-cov" },
+    { name = "pytest-mpl" },
     { name = "sybil", extra = ["pytest"] },
 ]
 
@@ -1566,6 +1568,7 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-arraydiff", specifier = ">=0.6.1" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
+    { name = "pytest-mpl", specifier = ">=0.17.0" },
     { name = "sphinx", specifier = ">=7.0" },
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-copybutton" },
@@ -1586,6 +1589,7 @@ test = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-arraydiff", specifier = ">=0.6.1" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
+    { name = "pytest-mpl", specifier = ">=0.17.0" },
     { name = "sybil", extras = ["pytest"], specifier = ">=9.1.0" },
 ]
 
@@ -1734,6 +1738,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/be/45/9b538de8cef30e17c7b45ef42f538a94889ed6a16f2387a6c89e73220651/pytest-cov-6.0.0.tar.gz", hash = "sha256:fde0b595ca248bb8e2d76f020b465f3b107c9632e6a1d1705f17834c89dcadc0", size = 66945 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/36/3b/48e79f2cd6a61dbbd4807b4ed46cb564b4fd50a76166b1c4ea5c1d9e2371/pytest_cov-6.0.0-py3-none-any.whl", hash = "sha256:eee6f1b9e61008bd34975a4d5bab25801eb31898b032dd55addc93e96fcaaa35", size = 22949 },
+]
+
+[[package]]
+name = "pytest-mpl"
+version = "0.17.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "matplotlib" },
+    { name = "packaging" },
+    { name = "pillow" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a9/81/636f9ea4ec0182abc0ab96e5abeab39fc1d9ce8fecf19e2943d685de519f/pytest-mpl-0.17.0.tar.gz", hash = "sha256:fbef05d7e664b4b33452fb698ac188e522791f327de34e7ea37dbdfe9d52cac6", size = 885613 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f3/32/3b5d6973cc8bdc320736ee608377e2756b1042ed162ca2d2ee5555f2d117/pytest_mpl-0.17.0-py3-none-any.whl", hash = "sha256:2ee7cf902ef071e45ae14fe190b3d8a9839c2fd8933e0514bf58df310d8ed66b", size = 27555 },
 ]
 
 [[package]]
