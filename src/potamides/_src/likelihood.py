@@ -19,7 +19,25 @@ log2pi = jnp.log(2 * jnp.pi)
 def compute_ln_lik_curved(
     ngamma: Sz0, f1_logf1: Sz0, f2_logf2: Sz0, f3_logf3: Sz0
 ) -> Sz0:
-    """Log-Likelihood of the curved part of the stream."""
+    """Log-Likelihood of the curved part of the stream.
+
+    Parameters
+    ----------
+    ngamma : Array[float, ()]
+        Number of gamma values.
+    f1_logf1 : Array[float, ()]
+        Log-likelihood contribution from the first feature.
+    f2_logf2 : Array[float, ()]
+        Log-likelihood contribution from the second feature.
+    f3_logf3 : Array[float, ()]
+        Log-likelihood contribution from the third feature.
+
+    Returns
+    -------
+    Array[float, ()]
+        Log-likelihood of the curved part of the stream.
+
+    """
     return ngamma * (f1_logf1 + f2_logf2 + f3_logf3)
 
 
@@ -72,37 +90,88 @@ def compute_ln_likelihood(
     *,
     sigma_theta: float = jnp.deg2rad(10.0),
 ) -> Sz0:
-    """Return the likelihood of the accelerations given the track's curvature.
+    r"""Compute the log-likelihood of accelerations given track curvature.
 
-    Calculates the likelihood based on the angles between the unit curvature
-    vector at given positions along the stream and the acceleration at these
-    positions. Since the accelerations are computed from a model of a
-    gravitational potential, the likelihood is a goodness of fit measure of the
-    potential.
+    This function calculates the likelihood that observed gravitational
+    accelerations are consistent with the curvature of a stellar stream track.
+    It implements the method from Nibauer et al. (2023) for assessing the
+    goodness of fit between a gravitational potential model and stream
+    observations.
 
-    Parameters:
+    The likelihood is based on the alignment between unit curvature vectors
+    (principal normal directions) and the local acceleration field. Compatible
+    alignments indicate that the acceleration points in the direction of
+    curvature, as expected for streams shaped by gravitational forces.
+
+    Parameters
     ----------
-    kappa_hat
-      An array of shape (N, 2). The unit curvature vector (or named normal
-      vector).
-    acc_xy_unit
-      An array of shape (N, 2) representing the planar acceleration at each
-      input position.
-    where_straight
-      Boolean array indicating indices where the stream is linear (has no
-      curvature). If `None`, all points are assumed to be curved.
-    sigma_theta
-      The standard deviation of the angle between the planar acceleration
-      vectors and the unit curvature vectors, given in radians. only used if
-      `where_straight` is an array with `True` elements.
+    kappa_hat : Array[float, "N 2"]
+        Unit curvature vectors (principal normal vectors) at N positions along
+        the stream track. These point in the direction of maximum curvature.
+    acc_xy_unit : Array[float, "N 2"]
+        Unit acceleration vectors in the x-y plane at N positions. These
+        represent the direction of the gravitational acceleration from
+        the potential model.
+    where_straight : Array[bool, "N"], optional
+        Boolean mask indicating positions where the stream is locally straight
+        (has negligible curvature). If None, all positions are assumed to be
+        curved. Default is None.
+    sigma_theta : float, default 10°
+        Standard deviation of the angle distribution between acceleration and
+        curvature vectors for straight segments, given in radians. Only used
+        when `where_straight` contains True values.
 
-    debug:
-      Whether to print debug information. Default `False`.
+    Returns
+    -------
+    Array[float, ""]
+        The log-likelihood value. Higher values indicate better agreement
+        between the acceleration field and track curvature. Returns -∞ if
+        the majority of curved segments are incompatible.
 
-    Returns:
-    ----------
-    Array[real, (n,)]
-      The computed logarithm of the likelihood.
+    Notes
+    -----
+    The algorithm computes three fractions (Nibauer et al. 2023, Eq. 18):
+
+    - f1: fraction of positions with compatible curvature-acceleration alignment
+    - f2: fraction of positions with incompatible alignment
+    - f3: fraction of positions with undefined curvature
+
+    The likelihood is only computed if f1 > f2 (more compatible than
+    incompatible alignments), otherwise returns -∞.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import potamides as ptd
+
+    >>> # Simple example: 3 points with perfect alignment
+    >>> kappa_hat = jnp.array([
+    ...     [1.0, 0.0],   # pointing right
+    ...     [0.0, 1.0],   # pointing up
+    ...     [-1.0, 0.0]   # pointing left
+    ... ])
+    >>>
+    >>> # Perfectly aligned accelerations
+    >>> acc_xy_unit = jnp.array([
+    ...     [1.0, 0.0],   # perfectly aligned
+    ...     [0.0, 1.0],   # perfectly aligned
+    ...     [-1.0, 0.0]   # perfectly aligned
+    ... ])
+    >>>
+    >>> ln_lik = ptd.compute_ln_likelihood(kappa_hat, acc_xy_unit)
+    >>> print(f"Perfect alignment: {ln_lik:.2f}")
+    Perfect alignment: 2.48
+
+    >>> # Anti-aligned case (bad fit)
+    >>> acc_xy_unit_bad = jnp.array([
+    ...     [-1.0, 0.0],  # opposite direction
+    ...     [0.0, -1.0],  # opposite direction
+    ...     [1.0, 0.0]    # opposite direction
+    ... ])
+    >>>
+    >>> ln_lik_bad = ptd.compute_ln_likelihood(kappa_hat, acc_xy_unit_bad)
+    >>> print(f"Anti-aligned: {ln_lik_bad}")
+    Anti-aligned: -inf
 
     """
     # ---------------------------------------------------
