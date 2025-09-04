@@ -161,16 +161,75 @@ def combine_ln_likelihoods(
     ngammas: Int[Array, "S"],
     arclengths: Real[Array, "S"],
 ) -> Sz0:
-    """Combine likelihoods from different stream segments.
+    r"""Combine likelihoods from different stream segments with density weighting.
+
+    This function combines log-likelihoods from multiple stream segments by
+    applying density-based weighting. Stream segments with lower measurement
+    density (fewer gamma points per unit arc-length) are up-weighted, while
+    segments with higher measurement density are down-weighted. This ensures
+    fair contribution from all segments regardless of their sampling density.
+
+    The function is vectorized using JAX's `jnp.vectorize` with signature
+    `(n),(n),(n)->()`, allowing it to process multiple sets of stream segments
+    in parallel. When given 2D input arrays, it processes each row independently
+    and returns a 1D array of combined likelihoods.
 
     Parameters
     ----------
-    lnliks
-        The log-likelihoods of the stream segments.
-    ngammas
-        The number of gamma points in each segment.
-    arclengths
-        The total arclengths of the stream segments.
+    lnliks : Array[float, "S"]
+        The log-likelihoods of S stream segments. For vectorized operation,
+        this can be a 2D array where each row represents a different set
+        of stream segments.
+    ngammas : Array[int, "S"]
+        The number of gamma points in each of the S stream segments.
+        Must have the same shape as `lnliks`.
+    arclengths : Array[float, "S"]
+        The total arc-lengths of the S stream segments.
+        Must have the same shape as `lnliks`.
+
+    Returns
+    -------
+    Array[float, ""]
+        The combined weighted log-likelihood. For vectorized inputs,
+        returns an array with one combined likelihood per input set.
+
+    Notes
+    -----
+    The weighting scheme computes the mean measurement density across all
+    segments and uses this to normalize individual segment contributions:
+
+    .. math::
+
+        \bar{\rho} = \frac{\sum_i n_i}{\sum_i L_i}
+
+        w_i = \frac{\bar{\rho}}{\rho_i} = \frac{\bar{\rho} L_i}{n_i}
+
+        \mathcal{L}_{combined} = \sum_i w_i \mathcal{L}_i
+
+    where :math:`n_i` is the number of gamma points, :math:`L_i` is the
+    arc-length, and :math:`\mathcal{L}_i` is the log-likelihood for
+    segment :math:`i`.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import potamides as ptd
+
+    >>> # Scalar inputs - single set of stream segments
+    >>> lnliks = jnp.array([0.5, 1.0, 1.5])
+    >>> ngammas = jnp.array([100, 100, 100])
+    >>> arclengths = jnp.array([1.0, 1.0, 1.0])
+    >>> combined = ptd.combine_ln_likelihoods(lnliks, ngammas, arclengths)
+    >>> print(combined)
+    3.0
+
+    >>> # Vector inputs - multiple sets of stream segments
+    >>> lnliks = jnp.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+    >>> ngammas = jnp.array([[100, 200, 300], [150, 250, 350]])
+    >>> arclengths = jnp.array([[1.0, 2.0, 3.0], [1.5, 2.5, 3.5]])
+    >>> combined = ptd.combine_ln_likelihoods(lnliks, ngammas, arclengths)
+    >>> print(combined.round(1))
+    [0.6 1.5]
 
     """
     # Compute the mean measurement density of the stream segments. This is the
@@ -186,7 +245,7 @@ def combine_ln_likelihoods(
 
     # Compute the weighted log-likelihoods
     lnliks_weighted = weights * lnliks
-    # TODO: does this need to be normalized by the sum of the weights?
+    # TODO: should this be normalized by the sum of the weights?
 
     # Return the total log-likelihood
     return jnp.sum(lnliks_weighted)
