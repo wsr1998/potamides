@@ -598,7 +598,7 @@ class AbstractTrack:
 
         Parameters
         ----------
-        gamma : Array[float, "N"]
+        gamma : Array[float, (N,)]
             The gamma values to evaluate and plot the track at.
         ax : plt.Axes, optional
             The matplotlib axes to plot on. If None, creates a new figure.
@@ -668,7 +668,7 @@ class AbstractTrack:
 
         Parameters
         ----------
-        gamma : Array[float, "N"]
+        gamma : Array[float, (N,)]
             The gamma values where tangent vectors will be plotted.
         ax : plt.Axes, optional
             The matplotlib axes to plot on. If None, creates a new figure.
@@ -753,7 +753,7 @@ class AbstractTrack:
 
         Parameters
         ----------
-        gamma : Array[float, "N"]
+        gamma : Array[float, (N,)]
             The gamma values where normal vectors will be plotted.
         ax : plt.Axes, optional
             The matplotlib axes to plot on. If None, creates a new figure.
@@ -842,7 +842,7 @@ class AbstractTrack:
         ----------
         potential : galax.potential.AbstractPotential
             The gravitational potential to evaluate accelerations.
-        gamma : Array[float, "N"]
+        gamma : Array[float, (N,)]
             The gamma values where acceleration vectors will be plotted.
         t : float, default 0
             The time at which to evaluate the potential (for time-dependent potentials).
@@ -944,7 +944,7 @@ class AbstractTrack:
 
         Parameters
         ----------
-        gamma : Array[float, "N"]
+        gamma : Array[float, (N,)]
             The gamma values to evaluate the track and geometry at.
         potential : galax.potential.AbstractPotential, optional
             The potential to use for computing local accelerations. If `None`,
@@ -1097,10 +1097,10 @@ class Track(AbstractTrack):
 
     Parameters
     ----------
-    gamma : Array[float, "N"], optional
+    gamma : Array[float, (N,)], optional
         The parameter values along the track. Must be provided together with `knots`
         if `ridge_line` is not specified.
-    knots : Array[float, "N F"], optional
+    knots : Array[float, (N, F)], optional
         The position data points corresponding to gamma values, where F is the
         spatial dimension (typically 2 for x,y coordinates). Must be provided
         together with `gamma` if `ridge_line` is not specified.

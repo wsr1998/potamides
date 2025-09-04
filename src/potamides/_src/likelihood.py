@@ -105,14 +105,14 @@ def compute_ln_likelihood(
 
     Parameters
     ----------
-    kappa_hat : Array[float, "N 2"]
+    kappa_hat : Array[float, (N, 2)]
         Unit curvature vectors (principal normal vectors) at N positions along
         the stream track. These point in the direction of maximum curvature.
-    acc_xy_unit : Array[float, "N 2"]
+    acc_xy_unit : Array[float, (N, 2)]
         Unit acceleration vectors in the x-y plane at N positions. These
         represent the direction of the gravitational acceleration from
         the potential model.
-    where_straight : Array[bool, "N"], optional
+    where_straight : Array[bool, (N,)], optional
         Boolean mask indicating positions where the stream is locally straight
         (has negligible curvature). If None, all positions are assumed to be
         curved. Default is None.
@@ -123,7 +123,7 @@ def compute_ln_likelihood(
 
     Returns
     -------
-    Array[float, ""]
+    Array[float, ()]
         The log-likelihood value. Higher values indicate better agreement
         between the acceleration field and track curvature. Returns -∞ if
         the majority of curved segments are incompatible.
@@ -245,20 +245,20 @@ def combine_ln_likelihoods(
 
     Parameters
     ----------
-    lnliks : Array[float, "S"]
+    lnliks : Array[float, (S,)]
         The log-likelihoods of S stream segments. For vectorized operation,
         this can be a 2D array where each row represents a different set
         of stream segments.
-    ngammas : Array[int, "S"]
+    ngammas : Array[int, (S,)]
         The number of gamma points in each of the S stream segments.
         Must have the same shape as `lnliks`.
-    arclengths : Array[float, "S"]
+    arclengths : Array[float, (S,)]
         The total arc-lengths of the S stream segments.
         Must have the same shape as `lnliks`.
 
     Returns
     -------
-    Array[float, ""]
+    Array[float, ()]
         The combined weighted log-likelihood. For vectorized inputs,
         returns an array with one combined likelihood per input set.
 
