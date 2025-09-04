@@ -1505,6 +1505,7 @@ dependencies = [
 dev = [
     { name = "furo" },
     { name = "ipykernel" },
+    { name = "matplotlib" },
     { name = "myst-parser" },
     { name = "nox", extra = ["uv"] },
     { name = "optional-dependencies" },
@@ -1519,6 +1520,7 @@ dev = [
 ]
 docs = [
     { name = "furo" },
+    { name = "matplotlib" },
     { name = "myst-parser" },
     { name = "sphinx" },
     { name = "sphinx-autodoc-typehints" },
@@ -1528,6 +1530,7 @@ nox = [
     { name = "nox", extra = ["uv"] },
 ]
 test = [
+    { name = "matplotlib" },
     { name = "optional-dependencies" },
     { name = "pytest" },
     { name = "pytest-arraydiff" },
@@ -1555,6 +1558,7 @@ requires-dist = [
 dev = [
     { name = "furo", specifier = ">=2023.8.17" },
     { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "myst-parser", specifier = ">=0.13" },
     { name = "nox", extras = ["uv"], specifier = ">=2025.5.1" },
     { name = "optional-dependencies", specifier = ">=0.3.2" },
@@ -1569,6 +1573,7 @@ dev = [
 ]
 docs = [
     { name = "furo", specifier = ">=2023.8.17" },
+    { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "myst-parser", specifier = ">=0.13" },
     { name = "sphinx", specifier = ">=7.0" },
     { name = "sphinx-autodoc-typehints" },
@@ -1576,6 +1581,7 @@ docs = [
 ]
 nox = [{ name = "nox", extras = ["uv"], specifier = ">=2025.5.1" }]
 test = [
+    { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "optional-dependencies", specifier = ">=0.3.2" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-arraydiff", specifier = ">=0.6.1" },

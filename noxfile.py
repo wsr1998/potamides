@@ -80,7 +80,7 @@ def make_test_arraydiff(session: nox.Session) -> None:
 # ===================================================================
 
 
-@nox.session(reuse_venv=True)
+@nox.session(venv_backend="uv", reuse_venv=True)
 def docs(session: nox.Session) -> None:
     """
     Build the docs. Pass --non-interactive to avoid serving. First positional argument is the target directory.
@@ -94,7 +94,14 @@ def docs(session: nox.Session) -> None:
     args, posargs = parser.parse_known_args(session.posargs)
     serve = args.builder == "html" and session.interactive
 
-    session.install("-e.[docs]", "sphinx-autobuild")
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=docs",
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.install("sphinx-autobuild")
 
     shared_args = (
         "-n",  # nitpicky mode

@@ -9,8 +9,10 @@ author = "Sirui"
 version = release = importlib.metadata.version("potamides")
 
 extensions = [
+    "matplotlib.sphinxext.plot_directive",
     "myst_parser",
     "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
@@ -60,5 +62,30 @@ nitpick_ignore = [
     ("py:class", "_io.StringIO"),
     ("py:class", "_io.BytesIO"),
 ]
+
+# Configure matplotlib plot directive
+plot_include_source = True
+plot_html_show_source_link = False
+plot_html_show_formats = False
+plot_formats = ["png"]
+plot_rcparams = {
+    "figure.figsize": (8, 6),
+    "figure.dpi": 150,
+    "savefig.dpi": 150,
+    "font.size": 9,
+    "axes.titlesize": 10,
+    "axes.labelsize": 9,
+    "lines.linewidth": 1.5,
+    "lines.markersize": 4,
+}
+
+# Configure doctest
+doctest_global_setup = """
+import jax
+import jax.numpy as jnp
+import potamides as ptd
+import matplotlib.pyplot as plt
+import numpy as np
+"""
 
 always_document_param_types = True
