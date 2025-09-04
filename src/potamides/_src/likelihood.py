@@ -17,13 +17,13 @@ log2pi = jnp.log(2 * jnp.pi)
 
 @ft.partial(jax.jit)
 def compute_ln_lik_curved(
-    ngamma: Sz0, f1_logf1: Sz0, f2_logf2: Sz0, f3_logf3: Sz0
+    ngamma: int, f1_logf1: Sz0, f2_logf2: Sz0, f3_logf3: Sz0
 ) -> Sz0:
     """Log-Likelihood of the curved part of the stream.
 
     Parameters
     ----------
-    ngamma : Array[float, ()]
+    ngamma : int
         Number of gamma values.
     f1_logf1 : Array[float, ()]
         Log-likelihood contribution from the first feature.
