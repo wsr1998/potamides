@@ -31,7 +31,6 @@ QorVSzN3: TypeAlias = SzN3 | QuSzN3
 
 SzData: TypeAlias = Real[Array, "data"]
 SzData2: TypeAlias = Real[Array, "data 2"]
-SzDataF: TypeAlias = Real[Array, "data F"]
 
 SzGamma: TypeAlias = Real[Array, "gamma"]
 SzGamma2: TypeAlias = Real[Array, "gamma 2"]
