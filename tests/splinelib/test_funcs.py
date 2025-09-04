@@ -1,19 +1,15 @@
 """Test the functions in the splinelib module."""
 
 import pathlib
-from typing import TypeAlias
 
 import interpax
 import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxtyping import Array, Real
 
 import potamides.splinelib as splib
-
-SzGamma: TypeAlias = Real[Array, "gamma"]
-SzGamma2: TypeAlias = Real[Array, "gamma 2"]
+from potamides._src.custom_types import SzGamma, SzGamma2
 
 # pytest.mark.array_compare generates errors b/c of an old-style hookwrapper
 # teardown.

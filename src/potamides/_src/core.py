@@ -6,7 +6,7 @@ __all__ = [
 ]
 
 import functools as ft
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from typing import Any, Literal, final
 
 import equinox as eqx
@@ -16,10 +16,10 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import matplotlib.pyplot as plt
-from jaxtyping import Array, Bool, Real
+from jaxtyping import Array, Bool
 
 from . import splinelib
-from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2
+from .custom_types import LikeSz0, Sz0, Sz2, SzGamma, SzGammaF, SzN, SzN2, SzNF
 
 log2pi = jnp.log(2 * jnp.pi)
 
@@ -48,9 +48,98 @@ class AbstractTrack:
     Exception
         If the spline is not cubic2.
 
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import potamides as ptd
+    >>> import matplotlib.pyplot as plt
+
+    >>> # Create a parametric circle with radius 2
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+    >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+    >>> track = ptd.Track(gamma, xy)
+
+    Basic position evaluation:
+
+    >>> gamma_test = jnp.array([0, jnp.pi / 2, jnp.pi])
+    >>> positions = track(gamma_test)
+    >>> print("Positions:", positions.round(2))
+    Positions: [[ 2.  0.]
+                [ 0.  2.]
+                [-2.  0.]]
+
+    Spherical coordinates (radius, angle):
+
+    >>> spherical = track.spherical_position(gamma_test)
+    >>> print("Spherical (r, theta):", spherical.round(4))
+    Spherical (r, theta): [[2.     0.    ]
+                           [2.     1.5708]
+                           [2.     3.1416]]
+
+    Tangent vectors along the track:
+
+    >>> tangents = track.tangent(gamma_test)
+    >>> print("Tangent vectors:", tangents.round(2))
+    Tangent vectors: [[ 0.  2.]
+                      [-2.  0.]
+                      [ 0. -2.]]
+
+    Curvature magnitude (for a circle, should be constant 1/radius):
+
+    >>> kappa_values = track.kappa(gamma_test)
+    >>> print("Curvature kappa:", kappa_values.round(4))
+    Curvature kappa: [0.5 0.5 0.5]
+
+    Curvature vectors:
+
+    >>> curvature_vecs = track.curvature(gamma_test)
+    >>> print("Curvature vectors:", curvature_vecs.round(2))
+    Curvature vectors: [[-0.5  0. ]
+                        [ 0.  -0.5]
+                        [ 0.5  0. ]]
+
+    Principal unit normal vectors (point toward center for circle):
+
+    >>> normals = track.principle_unit_normal(gamma_test)
+    >>> print("Unit normals:", normals.round(2))
+    Unit normals: [[-1.  0.]
+                   [ 0. -1.]
+                   [ 1.  0.]]
+
+    Access to track properties:
+
+    >>> print("Number of knots:", len(track.knots))
+    Number of knots: 10000
+    >>> print("Gamma range:", track.gamma.min().round(2), "to", track.gamma.max().round(2))
+    Gamma range: 0.0 to 6.28
+
+    For visualization (requires matplotlib):
+
+    .. plot::
+       :include-source:
+
+       import jax.numpy as jnp
+       import potamides as ptd
+       import matplotlib.pyplot as plt
+
+       # Create a parametric circle with radius 2
+       gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+       xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+       track = ptd.Track(gamma, xy)
+
+       # Create the plot
+       fig, ax = plt.subplots(figsize=(8, 8))
+       gamma_plot = jnp.linspace(0, 2*jnp.pi, 50)
+       track.plot_all(gamma_plot, ax=ax)
+       ax.set_aspect('equal')
+       ax.set_title('Track Example: Circle with Geometry Vectors')
+       plt.tight_layout()
+       plt.show()
+
     """
 
     ridge_line: interpax.Interpolator1D
+    "The spline interpolator for the track, parametrized by gamma."
 
     def __post_init__(self) -> None:
         _ = eqx.error_if(
@@ -65,7 +154,7 @@ class AbstractTrack:
         return self.ridge_line.x
 
     @property
-    def knots(self) -> Real[Array, "N F"]:
+    def knots(self) -> SzNF:
         """Return the knot points along the track."""
         return self.ridge_line.f
 
@@ -74,14 +163,12 @@ class AbstractTrack:
     # -------------------------------------------
     # Positions
 
-    def __call__(self, gamma: SzN) -> Real[Array, "N 2"]:
+    def positions(self, gamma: SzN) -> SzN2:
         """Return the position at a given gamma.
-
-        This is just evaluating the spline at the given gamma values.
 
         Examples
         --------
-        Compute the tangent vector for specific points on the unit circle:
+        Compute the position for specific points on the unit circle:
 
         >>> import jax.numpy as jnp
         >>> import interpax
@@ -92,7 +179,7 @@ class AbstractTrack:
         >>> track = ptd.Track(gamma, xy)
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
-        >>> print(track(gamma).round(2))
+        >>> print(track.positions(gamma).round(2))
         [[ 2.  0.]
          [ 0.  2.]
          [-2.  0.]]
@@ -100,9 +187,9 @@ class AbstractTrack:
         """
         return self.ridge_line(gamma)
 
-    def positions(self, gamma: SzN) -> SzN2:
-        """Compute the position at a given gamma. See `__call__` for details."""
-        return self(gamma)
+    def __call__(self, gamma: SzN) -> SzN2:
+        """Return the position at a given gamma."""
+        return self.positions(gamma)
 
     @ft.partial(jnp.vectorize, signature="()->(2)", excluded=(0,))
     @ft.partial(jax.jit)
@@ -111,17 +198,15 @@ class AbstractTrack:
 
         Examples
         --------
-        >>> import jax
         >>> import jax.numpy as jnp
-        >>> import interpax
-        >>> import potamides.splinelib as splib
+        >>> import potamides as ptd
 
         >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
         >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
-        >>> spline = interpax.Interpolator1D(gamma, xy, method="cubic2")
+        >>> track = ptd.Track(gamma, xy)
 
         >>> gamma = jnp.array([0, jnp.pi / 2, jnp.pi])
-        >>> r = jax.vmap(splib.spherical_position, (None, 0))(spline, gamma)
+        >>> r = track.spherical_position(gamma)
         >>> print(r.round(4))
         [[2.     0.    ]
          [2.     1.5708]
@@ -467,20 +552,31 @@ class AbstractTrack:
 
     # =====================================================
 
-    def __eq__(self, other: object) -> Bool[Array, ""]:
-        """Check if two tracks are equal."""
+    def __eq__(self, other: object) -> Bool[Array, ""]:  # type: ignore[override, unused-ignore]
+        """Check if two tracks are equal.
+
+        Examples
+        --------
+        >>> import jax.numpy as jnp
+        >>> import potamides as ptd
+
+        >>> gamma = jnp.linspace(0, 2 * jnp.pi, 10_000)
+        >>> xy = 2 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+        >>> track1 = ptd.Track(gamma, xy)
+        >>> track2 = ptd.Track(gamma, xy)
+        >>> track1 == track2
+        Array(True, dtype=bool)
+
+        >>> track3 = ptd.Track(gamma, xy + 1)
+        >>> track1 == track3
+        Array(False, dtype=bool)
+
+        """
         if not isinstance(other, AbstractTrack):
             return NotImplemented
 
-        all_fields = [
-            (
-                jnp.all(getattr(self, f.name) == getattr(other, f.name))
-                if hasattr(other, f.name)
-                else False
-            )
-            for f in fields(self)
-        ]
-        return jnp.all(jnp.array(all_fields))
+        eq_tree = jtu.tree_map(jnp.array_equal, self, other)
+        return jnp.array(jtu.tree_reduce(jnp.logical_and, eq_tree, True))
 
     # =====================================================
     # Plotting methods
@@ -495,7 +591,54 @@ class AbstractTrack:
         c: str = "red",
         knot_size: int = 10,
     ) -> plt.Axes:
-        """Plot the track itself."""
+        """Plot the track curve itself with knot points.
+
+        This method visualizes the parametric track curve as a continuous line
+        and overlays the knot points used in the spline interpolation.
+
+        Parameters
+        ----------
+        gamma : Array[float, (N,)]
+            The gamma values to evaluate and plot the track at.
+        ax : plt.Axes, optional
+            The matplotlib axes to plot on. If None, creates a new figure.
+        label : str, optional
+            The label for the track curve in the legend.
+        c : str, default "red"
+            The color for the track curve and knot points.
+        knot_size : int, default 10
+            The size of the knot point markers.
+
+        Returns
+        -------
+        plt.Axes
+            The matplotlib axes containing the plot.
+
+        Examples
+        --------
+        .. plot::
+           :include-source:
+
+           import jax.numpy as jnp
+           import potamides as ptd
+           import matplotlib.pyplot as plt
+
+           # Create a circular track
+           gamma = jnp.linspace(0, 2 * jnp.pi, 100)
+           xy = 3 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+           track = ptd.Track(gamma, xy)
+
+           # Plot just the track
+           fig, ax = plt.subplots(figsize=(8, 8))
+           gamma_plot = jnp.linspace(0, 2*jnp.pi, 200)
+           track.plot_track(gamma_plot, ax=ax)
+           ax.set_aspect('equal')
+           ax.set_title('Track Plot: Circle with Knot Points')
+           ax.legend()
+           plt.tight_layout()
+           plt.show()
+
+        """
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
@@ -517,7 +660,61 @@ class AbstractTrack:
         color: str = "red",
         label: str | None = r"$\hat{T}$",
     ) -> plt.Axes:
-        """Plot the unit tangent vectors along the track."""
+        """Plot the unit tangent vectors along the track.
+
+        This method visualizes the normalized tangent vectors at specified points
+        along the track. The tangent vectors show the direction of motion along
+        the parametric curve.
+
+        Parameters
+        ----------
+        gamma : Array[float, (N,)]
+            The gamma values where tangent vectors will be plotted.
+        ax : plt.Axes, optional
+            The matplotlib axes to plot on. If None, creates a new figure.
+        vec_width : float, default 0.003
+            The width of the quiver arrows.
+        vec_scale : float, default 30
+            The scale factor for arrow lengths (higher = shorter arrows).
+        color : str, default "red"
+            The color of the tangent vector arrows.
+        label : str, optional
+            The label for the tangent vectors in the legend.
+
+        Returns
+        -------
+        plt.Axes
+            The matplotlib axes containing the plot.
+
+        Examples
+        --------
+        .. plot::
+           :include-source:
+
+           import jax.numpy as jnp
+           import potamides as ptd
+           import matplotlib.pyplot as plt
+
+           # Create a circular track
+           gamma = jnp.linspace(0, 2 * jnp.pi, 100)
+           xy = 3 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+           track = ptd.Track(gamma, xy)
+
+           # Plot track with tangent vectors
+           fig, ax = plt.subplots(figsize=(8, 8))
+           gamma_plot = jnp.linspace(0, 2*jnp.pi, 200)
+           gamma_vectors = jnp.linspace(0, 2*jnp.pi, 12)
+
+           track.plot_track(gamma_plot, ax=ax, c='black', label='Track')
+           track.plot_tangents(gamma_vectors, ax=ax, color='red', vec_scale=20)
+
+           ax.set_aspect('equal')
+           ax.set_title('Track with Tangent Vectors')
+           ax.legend()
+           plt.tight_layout()
+           plt.show()
+
+        """
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
@@ -548,6 +745,61 @@ class AbstractTrack:
         color: str = "blue",
         label: str | None = r"$\hat{\kappa}$",
     ) -> plt.Axes:
+        """Plot the principal unit normal vectors (curvature direction) along the track.
+
+        This method visualizes the principal unit normal vectors at specified points
+        along the track. These vectors point in the direction of curvature and are
+        perpendicular to the tangent vectors, showing how the track curves.
+
+        Parameters
+        ----------
+        gamma : Array[float, (N,)]
+            The gamma values where normal vectors will be plotted.
+        ax : plt.Axes, optional
+            The matplotlib axes to plot on. If None, creates a new figure.
+        vec_width : float, default 0.003
+            The width of the quiver arrows.
+        vec_scale : float, default 30
+            The scale factor for arrow lengths (higher = shorter arrows).
+        color : str, default "blue"
+            The color of the normal vector arrows.
+        label : str, optional
+            The label for the normal vectors in the legend.
+
+        Returns
+        -------
+        plt.Axes
+            The matplotlib axes containing the plot.
+
+        Examples
+        --------
+        .. plot::
+           :include-source:
+
+           import jax.numpy as jnp
+           import potamides as ptd
+           import matplotlib.pyplot as plt
+
+           # Create a circular track
+           gamma = jnp.linspace(0, 2 * jnp.pi, 100)
+           xy = 3 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+           track = ptd.Track(gamma, xy)
+
+           # Plot track with curvature vectors
+           fig, ax = plt.subplots(figsize=(8, 8))
+           gamma_plot = jnp.linspace(0, 2*jnp.pi, 200)
+           gamma_vectors = jnp.linspace(0, 2*jnp.pi, 12)
+
+           track.plot_track(gamma_plot, ax=ax, c='black', label='Track')
+           track.plot_curvature(gamma_vectors, ax=ax, color='blue', vec_scale=20)
+
+           ax.set_aspect('equal')
+           ax.set_title('Track with Curvature Vectors (Principal Unit Normals)')
+           ax.legend()
+           plt.tight_layout()
+           plt.show()
+
+        """
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
@@ -580,6 +832,70 @@ class AbstractTrack:
         label: str | None = r"$\vec{a}$ (local)",
         color: str = "green",
     ) -> plt.Axes:
+        """Plot the local gravitational acceleration vectors along the track.
+
+        This method visualizes the gravitational acceleration vectors from a given
+        potential at specified points along the track. This is useful for understanding
+        how the gravitational field affects the motion along the track.
+
+        Parameters
+        ----------
+        potential : galax.potential.AbstractPotential
+            The gravitational potential to evaluate accelerations.
+        gamma : Array[float, (N,)]
+            The gamma values where acceleration vectors will be plotted.
+        t : float, default 0
+            The time at which to evaluate the potential (for time-dependent potentials).
+        vec_width : float, default 0.003
+            The width of the quiver arrows.
+        vec_scale : float, default 30
+            The scale factor for arrow lengths (higher = shorter arrows).
+        ax : plt.Axes, optional
+            The matplotlib axes to plot on. If None, creates a new figure.
+        label : str, optional
+            The label for the acceleration vectors in the legend.
+        color : str, default "green"
+            The color of the acceleration vector arrows.
+
+        Returns
+        -------
+        plt.Axes
+            The matplotlib axes containing the plot.
+
+        Examples
+        --------
+        .. plot::
+           :include-source:
+
+           import jax.numpy as jnp
+           import potamides as ptd
+           import galax.potential as gp
+           import matplotlib.pyplot as plt
+
+           # Create a circular track
+           gamma = jnp.linspace(0, 2 * jnp.pi, 100)
+           xy = 3 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+           track = ptd.Track(gamma, xy)
+
+           # Create a simple point mass potential at origin
+           potential = gp.KeplerPotential(m_tot=1e12, units="galactic")
+
+           # Plot track with local acceleration vectors
+           fig, ax = plt.subplots(figsize=(8, 8))
+           gamma_plot = jnp.linspace(0, 2*jnp.pi, 200)
+           gamma_vectors = jnp.linspace(0, 2*jnp.pi, 12)
+
+           track.plot_track(gamma_plot, ax=ax, c='black', label='Track')
+           track.plot_local_accelerations(potential, gamma_vectors, ax=ax,
+                                         color='green', vec_scale=10)
+
+           ax.set_aspect('equal')
+           ax.set_title('Track with Local Gravitational Acceleration')
+           ax.legend()
+           plt.tight_layout()
+           plt.show()
+
+        """
         if ax is None:
             _, ax = plt.subplots(dpi=150, figsize=(10, 10))
 
@@ -628,26 +944,92 @@ class AbstractTrack:
 
         Parameters
         ----------
-        gamma
+        gamma : Array[float, (N,)]
             The gamma values to evaluate the track and geometry at.
-        potential
+        potential : galax.potential.AbstractPotential, optional
             The potential to use for computing local accelerations. If `None`,
             the local acceleration vectors will not be plotted.
-
-        ax
+        ax : plt.Axes, optional
             The `matplotlib.axes.Axes` object to plot on. If `None`, a new
             figure and axes will be created. Defaults to `None`.
-        vec_width
+        vec_width : float, default 0.003
             The width of the quiver arrows. Defaults to `0.003`.
-        vec_scale
+        vec_scale : float, default 30
             The scale factor for the quiver arrows. This affects the length of
             the arrows. Defaults to `30`.
-        labels
+        labels : bool, default True
             Whether to show labels. Defaults to `True`.
-        show_tangents
+        show_tangents : bool, default True
             Whether to plot the unit tangent vectors. Defaults to `True`.
-        show_curvature
+        show_curvature : bool, default True
             Whether to plot the unit curvature vectors. Defaults to `True`.
+        curvature_kwargs : dict, optional
+            Additional keyword arguments to pass to the curvature plotting method.
+        acceleration_kwargs : dict, optional
+            Additional keyword arguments to pass to the acceleration plotting method.
+
+        Returns
+        -------
+        plt.Axes
+            The matplotlib axes containing the complete plot.
+
+        Examples
+        --------
+        Basic track visualization with geometry vectors:
+
+        .. plot::
+           :include-source:
+
+           import jax.numpy as jnp
+           import potamides as ptd
+           import matplotlib.pyplot as plt
+
+           # Create a figure-8 track for interesting geometry
+           gamma = jnp.linspace(0, 2 * jnp.pi, 200)
+           x = 2 * jnp.sin(gamma)
+           y = jnp.sin(2 * gamma)
+           xy = jnp.stack([x, y], axis=-1)
+           track = ptd.Track(gamma, xy)
+
+           # Plot all geometric features
+           fig, ax = plt.subplots(figsize=(10, 8))
+           gamma_vectors = jnp.linspace(0, 2*jnp.pi, 16)
+
+           track.plot_all(gamma_vectors, ax=ax, vec_scale=15)
+           ax.set_aspect('equal')
+           ax.set_title('Complete Track Visualization: Figure-8 with Geometry Vectors')
+           ax.legend()
+           plt.tight_layout()
+           plt.show()
+
+        Track with gravitational potential:
+
+        .. plot::
+           :include-source:
+
+           import jax.numpy as jnp
+           import potamides as ptd
+           import galax.potential as gp
+           import matplotlib.pyplot as plt
+
+           # Create a circular track
+           gamma = jnp.linspace(0, 2 * jnp.pi, 100)
+           xy = 5 * jnp.stack([jnp.cos(gamma), jnp.sin(gamma)], axis=-1)
+           track = ptd.Track(gamma, xy)
+
+           # Add a gravitational potential
+           potential = gp.KeplerPotential(m_tot=1e12, units="galactic")
+
+           # Plot everything including gravitational field
+           fig, ax = plt.subplots(figsize=(10, 10))
+           gamma_vectors = jnp.linspace(0, 2*jnp.pi, 12)
+
+           track.plot_all(gamma_vectors, potential=potential, ax=ax, vec_scale=8)
+           ax.set_aspect('equal')
+           ax.set_title('Track with Gravitational Field')
+           ax.legend()
+           plt.tight_layout()
+           plt.show()
 
         """
         if ax is None:
@@ -702,7 +1084,139 @@ class AbstractTrack:
 @ft.partial(jtu.register_dataclass, data_fields=["ridge_line"], meta_fields=[])
 @dataclass(frozen=True, slots=True, eq=False)
 class Track(AbstractTrack):
-    """A track with data and a spline."""
+    r"""Concrete implementation of a parametric track using spline interpolation.
+
+    This class represents a smooth parametric curve in 2D space using cubic spline
+    interpolation. It provides a concrete implementation of the AbstractTrack
+    interface with automatic spline construction from data points or direct
+    spline specification.
+
+    The track is parameterized by gamma values and uses cubic2 spline interpolation
+    to ensure twice-differentiability, which is required for computing curvature
+    vectors and other geometric properties.
+
+    Parameters
+    ----------
+    gamma : Array[float, (N,)], optional
+        The parameter values along the track. Must be provided together with `knots`
+        if `ridge_line` is not specified.
+    knots : Array[float, (N, F)], optional
+        The position data points corresponding to gamma values, where F is the
+        spatial dimension (typically 2 for x,y coordinates). Must be provided
+        together with `gamma` if `ridge_line` is not specified.
+    ridge_line : interpax.Interpolator1D, optional
+        Pre-constructed spline interpolator. If provided, `gamma` and `knots`
+        must be None.
+
+    Raises
+    ------
+    ValueError
+        If neither (`gamma`, `knots`) nor `ridge_line` is provided, or if both
+        are provided simultaneously.
+    ValueError
+        If the spline method is not "cubic2" (required for curvature computation).
+
+    Examples
+    --------
+    Create a circular track from parametric data:
+
+    >>> import jax.numpy as jnp
+    >>> import potamides as ptd
+
+    >>> # Generate circle data
+    >>> gamma = jnp.linspace(0, 2 * jnp.pi, 100)
+    >>> x = 3 * jnp.cos(gamma)
+    >>> y = 3 * jnp.sin(gamma)
+    >>> knots = jnp.stack([x, y], axis=-1)
+    >>> track = ptd.Track(gamma, knots)
+
+    >>> # Evaluate track at specific points
+    >>> test_gamma = jnp.array([0, jnp.pi/2, jnp.pi])
+    >>> positions = track(test_gamma)
+    >>> print("Positions:", positions.round(2))
+    Positions: [[ 3.  0.]
+                [ 0.  3.]
+                [-3.  0.]]
+
+    Create a sinusoidal track:
+
+    >>> gamma = jnp.linspace(-1, 1, 50)
+    >>> x = gamma
+    >>> y = jnp.sin(3 * jnp.pi * gamma)
+    >>> knots = jnp.stack([x, y], axis=-1)
+    >>> track = ptd.Track(gamma, knots)
+
+    >>> # Compute geometric properties
+    >>> gamma_test = jnp.array([-0.5, 0, 0.5])
+    >>> tangents = track.tangent(gamma_test)
+    >>> curvatures = track.kappa(gamma_test)
+    >>> print("Curvatures:", curvatures.round(3))
+    Curvatures: [88.684  0.    88.684]
+
+    Create from an existing spline:
+
+    >>> import interpax
+    >>> gamma = jnp.linspace(0, 1, 20)
+    >>> y = gamma**2
+    >>> knots = jnp.stack([gamma, y], axis=-1)
+    >>> spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
+    >>> track = ptd.Track(ridge_line=spline)
+
+    Track properties and methods:
+
+    >>> print("Gamma range:", track.gamma.min(), "to", track.gamma.max())
+    Gamma range: 0.0 to 1.0
+    >>> print("Number of knots:", len(track.knots))
+    Number of knots: 20
+    >>> arc_length = track.total_arc_length
+    >>> print("Total arc length:", arc_length.round(3))
+    Total arc length: 1.479
+
+    Visualization example:
+
+    .. plot::
+       :include-source:
+
+       import jax.numpy as jnp
+       import potamides as ptd
+       import matplotlib.pyplot as plt
+
+       # Create a spiral track
+       gamma = jnp.linspace(0, 4*jnp.pi, 200)
+       r = 1 + 0.3 * gamma
+       x = r * jnp.cos(gamma)
+       y = r * jnp.sin(gamma)
+       knots = jnp.stack([x, y], axis=-1)
+       track = ptd.Track(gamma, knots)
+
+       # Plot the track with geometric vectors
+       fig, ax = plt.subplots(figsize=(10, 10))
+       gamma_plot = jnp.linspace(0, 4*jnp.pi, 400)
+       gamma_vectors = jnp.linspace(0, 4*jnp.pi, 20)
+
+       track.plot_all(gamma_vectors, ax=ax, vec_scale=10)
+       ax.set_aspect('equal')
+       ax.set_title('Spiral Track with Geometric Properties')
+       plt.tight_layout()
+       plt.show()
+
+    See Also
+    --------
+    AbstractTrack : Base class defining the track interface
+    interpax.Interpolator1D : The underlying spline interpolation class
+
+    Notes
+    -----
+    The Track class is designed to work seamlessly with JAX transformations
+    including jit compilation, automatic differentiation, and vectorization.
+    All geometric computations are performed using JAX operations for optimal
+    performance.
+
+    The spline interpolation uses the "cubic2" method which ensures the track
+    is twice-differentiable everywhere, enabling computation of curvature
+    vectors and higher-order geometric properties.
+
+    """
 
     #: [x,y](gamma) spline. It must be twice-differentiable (cubic2) to compute
     #: curvature vectors.
@@ -733,7 +1247,41 @@ class Track(AbstractTrack):
 
     @classmethod
     def from_spline(cls: "type[Track]", spline: interpax.Interpolator1D, /) -> "Track":
-        """Create a Track from an existing spline."""
+        """Create a Track from an existing spline interpolator.
+
+        Parameters
+        ----------
+        spline : interpax.Interpolator1D
+            An existing spline interpolator that will be used as the ridge_line
+            for the track. The spline must use the "cubic2" method to ensure
+            twice-differentiability for curvature computations.
+
+        Returns
+        -------
+        Track
+            A new Track instance using the provided spline as its ridge_line.
+
+        Raises
+        ------
+        ValueError
+            If the spline method is not "cubic2", which is required for
+            computing curvature vectors and other second-order geometric
+            properties.
+
+        Examples
+        --------
+        >>> import jax.numpy as jnp
+        >>> import interpax
+        >>> import potamides as ptd
+
+        >>> gamma = jnp.linspace(-2, 2, 50)
+        >>> knots = jnp.stack([gamma, gamma**2], axis=-1)
+
+        >>> spline = interpax.Interpolator1D(gamma, knots, method="cubic2")
+
+        >>> track = ptd.Track.from_spline(spline)
+
+        """
         # TODO: set directly without deconstructing
         if spline.method != "cubic2":
             msg = f"Spline must be cubic2, got {spline.method}."

@@ -1,51 +1,51 @@
 [project]
-  name = "potamides"
-  authors = [
-    { name = "Jacob Nibauer", email = "jnibauer@princeton.edu" },
-    { name = "Nathaniel Starkman", email = "starkman@mit.edu" },
-    { name = "Sirui", email = "gnx996@ku.dk" },
-  ]
-  description = "Constrain gravitational potential with stream curvature"
-  readme = "README.md"
-  requires-python = ">=3.11"
-  classifiers = [
-    "Development Status :: 1 - Planning",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python",
-    "Topic :: Scientific/Engineering",
-    "Typing :: Typed",
-  ]
-  dynamic = [
-    "version",
-  ]
-  dependencies = [
-    "astropy>=7.0",
-    "galax",
-    "interpax>=0.3.8",
-    "jax>=0.5.3",
-    "jaxtyping>=0.3.1",
-    "matplotlib>=3.10.1",
-    "numpy>=2.2.3",
-    "optax>=0.2.4",
-    "scipy>=1.15.2",
-    "typing-extensions>=4.13.2",
-    "unxt>=1.6.2",
-    "xmmutablemap>=0.1",
+name = "potamides"
+authors = [
+  { name = "Jacob Nibauer", email = "jnibauer@princeton.edu" },
+  { name = "Nathaniel Starkman", email = "starkman@mit.edu" },
+  { name = "Sirui", email = "gnx996@ku.dk" },
+]
+description = "Constrain gravitational potential with stream curvature"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
+]
+dynamic = [
+  "version",
+]
+dependencies = [
+  "astropy>=7.0",
+  "galax",
+  "interpax>=0.3.8",
+  "jax>=0.5.3",
+  "jaxtyping>=0.3.1",
+  "matplotlib>=3.10.1",
+  "numpy>=2.2.3",
+  "optax>=0.2.4",
+  "scipy>=1.15.2",
+  "typing-extensions>=4.13.2",
+  "unxt>=1.6.2",
+  "xmmutablemap>=0.1",
 ]
 
-  [project.urls]
-    Homepage      = "https://github.com/wsr1998/potamides"
-    "Bug Tracker" = "https://github.com/wsr1998/potamides/issues"
-    Discussions   = "https://github.com/wsr1998/potamides/discussions"
-    Changelog     = "https://github.com/wsr1998/potamides/releases"
+[project.urls]
+Homepage      = "https://github.com/wsr1998/potamides"
+"Bug Tracker" = "https://github.com/wsr1998/potamides/issues"
+Discussions   = "https://github.com/wsr1998/potamides/discussions"
+Changelog     = "https://github.com/wsr1998/potamides/releases"
 
 
 [dependency-groups]
@@ -58,6 +58,7 @@ dev = [
 ]
 docs = [
   "furo>=2023.08.17",
+  "matplotlib>=3.10.1",
   "myst_parser>=0.13",
   "sphinx>=7.0",
   "sphinx_autodoc_typehints",
@@ -67,10 +68,12 @@ nox = [
   "nox[uv]>=2025.5.1",
 ]
 test = [
+  "matplotlib>=3.10.1",
   "optional-dependencies>=0.3.2",
   "pytest>=8.3",
   "pytest-arraydiff>=0.6.1",
   "pytest-cov>=6.0.0",
+  "pytest-mpl>=0.17.0",
   "sybil[pytest]>=9.1.0",
 ]
 
@@ -101,12 +104,14 @@ test = [
     "-p no:doctest",    # using sybil
     "-ra",
     "--arraydiff",
-    "--arraydiff-reference-path=tests/data"
+    "--arraydiff-reference-path=tests/data",
+    "--mpl-hash-library=tests/baseline/plot_hashes.json"
   ]
   xfail_strict = true
   filterwarnings = [
     "error",
-    "ignore:.*jax\\.interpreters\\.xla\\.pytype_aval_mappings is deprecated.*:DeprecationWarning"
+    "ignore:.*jax\\.interpreters\\.xla\\.pytype_aval_mappings is deprecated.*:DeprecationWarning",
+    "ignore:No artists with labels found to put in legend.*:UserWarning"
   ]
   log_cli_level = "INFO"
   testpaths = [

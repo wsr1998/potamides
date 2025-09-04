@@ -9,7 +9,13 @@ import nox
 DIR = Path(__file__).parent.resolve()
 
 nox.needs_version = ">=2024.3.2"
-nox.options.sessions = ["lint", "pylint", "test", "make_test_arraydiff"]
+nox.options.sessions = [
+    "lint",
+    "pylint",
+    "test",
+    "make_test_arraydiff",
+    "make_test_mpl",
+]
 
 # ===================================================================
 # Lint
@@ -77,10 +83,31 @@ def make_test_arraydiff(session: nox.Session) -> None:
     )
 
 
+@nox.session(venv_backend="uv")
+def make_test_mpl(session: nox.Session) -> None:
+    """
+    Generate the `pytest-mpl` baseline images.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=test",
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run(
+        "pytest",
+        "-m",
+        "mpl_image_compare",
+        "--mpl-generate-hash-library=/Users/nmrs/local/potamides/tests/baseline/plot_hashes.json",
+        *session.posargs,
+    )
+
+
 # ===================================================================
 
 
-@nox.session(reuse_venv=True)
+@nox.session(venv_backend="uv", reuse_venv=True)
 def docs(session: nox.Session) -> None:
     """
     Build the docs. Pass --non-interactive to avoid serving. First positional argument is the target directory.
@@ -94,7 +121,14 @@ def docs(session: nox.Session) -> None:
     args, posargs = parser.parse_known_args(session.posargs)
     serve = args.builder == "html" and session.interactive
 
-    session.install("-e.[docs]", "sphinx-autobuild")
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=docs",
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.install("sphinx-autobuild")
 
     shared_args = (
         "-n",  # nitpicky mode
